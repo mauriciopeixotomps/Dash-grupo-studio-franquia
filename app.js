@@ -127,7 +127,7 @@ function renderFieldGroups() {
 // Honorários (aba Operação, regime de competência) x Faturamento (aba Fluxo de Caixa, regime de caixa por parcela)
 // alimentam a DRE Financeiro, cuja última linha é o Fluxo de Caixa acumulado.
 function simulate(model) {
-  const months = 12;
+  const months = model.anos * 12;
   const zeros = () => new Array(months).fill(0);
 
   const honorariosTax = zeros(), honorariosCorp = zeros();
@@ -179,12 +179,13 @@ function simulate(model) {
     cashFlow[m] = (m === 0 ? -model.aquisicao : cashFlow[m - 1]) + monthlyProfit[m];
   }
 
-  const faturamentoAno1 = monthlyRevenue.reduce((a, b) => a + b, 0);
-  const despesasAno1 = monthlyExpense.reduce((a, b) => a + b, 0);
+  const sum = a => a.reduce((x, y) => x + y, 0);
+  const faturamentoAno1 = sum(monthlyRevenue.slice(0, 12));
+  const despesasAno1 = sum(monthlyExpense.slice(0, 12));
   const lucroAno1 = faturamentoAno1 + despesasAno1;
 
-  const faturamentoTotal = faturamentoAno1 * model.anos;
-  const despesasTotal = (model.anos * despesasAno1) - model.aquisicao - model.treinamento;
+  const faturamentoTotal = sum(monthlyRevenue);
+  const despesasTotal = sum(monthlyExpense) - model.aquisicao;
   const lucroFinal = faturamentoTotal + despesasTotal;
   const roi = model.aquisicao > 0 ? lucroFinal / model.aquisicao : 0;
   const lucratividade = faturamentoAno1 > 0 ? lucroAno1 / faturamentoAno1 : 0;
@@ -210,6 +211,7 @@ function simulate(model) {
     faturamentoAno1, despesasAno1, lucroAno1, lucroFinal, roi, lucratividade,
     capitalGiro, breakEvenMonth, paybackMonth,
     investimentoInicial: model.aquisicao + model.treinamento,
+    anos: model.anos,
   };
 }
 
@@ -221,8 +223,8 @@ function statCardsData(model, r) {
     ['Despesas Ano 1', brl(r.despesasAno1), 'neg', 'Royalties, CRM, impostos, comercial'],
     ['Lucro Ano 1', brl(r.lucroAno1), r.lucroAno1 >= 0 ? 'pos' : 'neg', 'Faturamento − despesas'],
     ['Capital de giro necessário', brl(r.capitalGiro), 'neg', 'Soma dos meses deficitários'],
-    ['Breakeven', r.breakEvenMonth ? `Mês ${r.breakEvenMonth}` : 'Não atingido no Ano 1', r.breakEvenMonth ? 'pos' : 'neg', 'Lucro mensal fica positivo'],
-    ['Payback', r.paybackMonth ? `Mês ${r.paybackMonth}` : 'Sem payback no Ano 1', r.paybackMonth ? 'pos' : 'neg', 'Caixa acumulado recupera o investimento'],
+    ['Breakeven', r.breakEvenMonth ? `Mês ${r.breakEvenMonth}` : `Não atingido em ${model.anos} anos`, r.breakEvenMonth ? 'pos' : 'neg', 'Lucro mensal fica positivo'],
+    ['Payback', r.paybackMonth ? `Mês ${r.paybackMonth}` : `Sem payback em ${model.anos} anos`, r.paybackMonth ? 'pos' : 'neg', 'Caixa acumulado recupera o investimento'],
     ['ROI', `${r.roi.toFixed(1)}x`, r.roi >= 0 ? 'pos' : 'neg', `Sobre o contrato de ${model.anos} anos`],
     ['Lucratividade', pct(r.lucratividade), r.lucratividade >= 0 ? 'pos' : 'neg', 'Lucro / Faturamento — Ano 1'],
     ['Lucro final do contrato', brl(r.lucroFinal), r.lucroFinal >= 0 ? 'pos' : 'neg', `Projeção para ${model.anos} anos`],
@@ -252,6 +254,33 @@ function renderStats(model, r) {
 // ---------- Render: Chart ----------
 const MESES = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
 
+// Eixo X: nomes dos meses quando cabe em 1 ano; agrega em "Ano N" para contratos de 3 a 10 anos
+function monthAxisSvg(n, xFn, H) {
+  if (n <= 12) {
+    return MESES.slice(0, n).map((m, i) => `<text x="${xFn(i)}" y="${H - 12}" font-size="11" fill="#7A7876" text-anchor="middle">${m}</text>`).join('');
+  }
+  const anos = Math.round(n / 12);
+  let out = '';
+  for (let y = 0; y < anos; y++) {
+    const mid = y * 12 + 5.5;
+    out += `<text x="${xFn(mid)}" y="${H - 12}" font-size="11" font-weight="700" fill="#7A7876" text-anchor="middle">Ano ${y + 1}</text>`;
+  }
+  return out;
+}
+function yearDividersSvg(n, xFn, padT, padB, H) {
+  if (n <= 12) return '';
+  const anos = Math.round(n / 12);
+  let out = '';
+  for (let y = 1; y < anos; y++) {
+    const xx = xFn(y * 12);
+    out += `<line x1="${xx}" y1="${padT}" x2="${xx}" y2="${H - padB}" stroke="#E1DDD5" stroke-width="1" stroke-dasharray="2 3"/>`;
+  }
+  return out;
+}
+function periodoLabel(n) {
+  return n <= 12 ? '— Ano 1' : `— Ano 1 a Ano ${Math.round(n / 12)}`;
+}
+
 function renderChart(r, hostId) {
   const host = document.getElementById(hostId || 'chartHost');
   const gradId = 'grad-' + (hostId || 'chartHost');
@@ -272,11 +301,8 @@ function renderChart(r, hostId) {
     breakEvenMarker = `<circle cx="${x(idx)}" cy="${y(values[idx])}" r="5" fill="#927245" stroke="#FDFDFD" stroke-width="2"/>`;
   }
 
-  let gridLines = '';
-  let labels = '';
-  for (let i = 0; i < values.length; i++) {
-    labels += `<text x="${x(i)}" y="${H - 12}" font-size="11" fill="#7A7876" text-anchor="middle">${MESES[i]}</text>`;
-  }
+  let gridLines = yearDividersSvg(values.length, x, padT, padB, H);
+  const labels = monthAxisSvg(values.length, x, H);
   const yTicks = 4;
   for (let t = 0; t <= yTicks; t++) {
     const val = min + (range * t / yTicks);
@@ -303,6 +329,8 @@ function renderChart(r, hostId) {
       ${labels}
     </svg>
   `;
+  const titleEl = document.getElementById('chartTitle');
+  if (titleEl) titleEl.textContent = `Fluxo de caixa acumulado ${periodoLabel(values.length)}`;
 }
 
 // ---------- Render: Fluxo de Caixa detail chart (Receita/Despesa/Lucro/Acumulado + legenda) ----------
@@ -330,10 +358,8 @@ function renderFluxoChart(r, hostId) {
   const line = arr => arr.map((v, i) => `${x(i)},${y(v)}`).join(' ');
   const areaPath = arr => `M${x(0)},${zeroY} ` + arr.map((v, i) => `L${x(i)},${y(v)}`).join(' ') + ` L${x(n - 1)},${zeroY} Z`;
 
-  let gridLines = '', labels = '';
-  for (let i = 0; i < n; i++) {
-    labels += `<text x="${x(i)}" y="${H - 12}" font-size="11" fill="#7A7876" text-anchor="middle">${MESES[i]}</text>`;
-  }
+  let gridLines = yearDividersSvg(n, x, padT, padB, H);
+  const labels = monthAxisSvg(n, x, H);
   const yTicks = 4;
   for (let t = 0; t <= yTicks; t++) {
     const val = min + (range * t / yTicks);
@@ -378,6 +404,9 @@ function renderFluxoChart(r, hostId) {
     </svg>
   `;
 
+  const titleElFluxo = document.getElementById('chartTitleFluxo');
+  if (titleElFluxo) titleElFluxo.textContent = `Receita, despesa, lucro e caixa acumulado ${periodoLabel(n)}`;
+
   const legendHost = document.getElementById('chartLegendFluxo');
   if (legendHost) {
     legendHost.innerHTML = `
@@ -401,21 +430,24 @@ function dreDataRow(label, arr, opts) {
   const total = opts.showTotal !== false ? `<td class="total-col ${opts.colorize ? (sum(arr) >= 0 ? 'pos' : 'neg') : ''}">${brl(sum(arr))}</td>` : '<td class="total-col"></td>';
   return `<tr class="${cls}"><td class="label">${label}</td>${cells}${total}</tr>`;
 }
-function dreGroupHead(label) {
-  return `<tr class="group-head"><td class="label" colspan="14">${label}</td></tr>`;
+function dreGroupHead(label, colspan) {
+  return `<tr class="group-head"><td class="label" colspan="${colspan || 14}">${label}</td></tr>`;
 }
-function dreTableHtml(rowsHtml) {
-  const headerCols = MESES.map(m => `<th>${m}</th>`).join('');
+function dreTableHtml(rowsHtml, headers, totalLabel) {
+  headers = headers || MESES;
+  totalLabel = totalLabel || 'Total Ano 1';
+  const headerCols = headers.map(m => `<th>${m}</th>`).join('');
   return `
     <table class="dre-table">
-      <thead><tr><th class="label">R$</th>${headerCols}<th class="total-col">Total Ano 1</th></tr></thead>
+      <thead><tr><th class="label">R$</th>${headerCols}<th class="total-col">${totalLabel}</th></tr></thead>
       <tbody>${rowsHtml}</tbody>
     </table>
   `;
 }
 
 function dreRowsHtml(r) {
-  const dataRow = dreDataRow;
+  const y1 = arr => arr.slice(0, 12);
+  const dataRow = (label, arr, opts) => dreDataRow(label, y1(arr), opts);
   const groupHead = dreGroupHead;
 
   let html = '';
@@ -449,17 +481,31 @@ function renderDRE(r) {
   document.getElementById('dreTable').innerHTML = dreTableHtml(dreRowsHtml(r));
 }
 
+// Agrega os meses em totais por ano (Ano 1..Ano N) para caber o contrato inteiro (3 a 10 anos) na tabela
+function yearlyTotals(arr, anos) {
+  const out = [];
+  for (let y = 0; y < anos; y++) out.push(arr.slice(y * 12, y * 12 + 12).reduce((a, b) => a + b, 0));
+  return out;
+}
+function yearlyEndValues(arr, anos) {
+  const out = [];
+  for (let y = 0; y < anos; y++) out.push(arr[y * 12 + 11]);
+  return out;
+}
+
 function fluxoRowsHtml(r) {
+  const anos = r.anos;
   let html = '';
-  html += dreDataRow('Faturamento', r.monthlyRevenue, { rowClass: 'total-row' });
-  html += dreDataRow('Despesas', r.monthlyExpense, { rowClass: 'total-row' });
-  html += dreDataRow('Lucro', r.monthlyProfit, { rowClass: 'hero-row', colorize: true });
-  html += dreDataRow('Fluxo de Caixa acumulado', r.cashFlow, { rowClass: 'hero-row', colorize: true, showTotal: false });
+  html += dreDataRow('Faturamento', yearlyTotals(r.monthlyRevenue, anos), { rowClass: 'total-row' });
+  html += dreDataRow('Despesas', yearlyTotals(r.monthlyExpense, anos), { rowClass: 'total-row' });
+  html += dreDataRow('Lucro', yearlyTotals(r.monthlyProfit, anos), { rowClass: 'hero-row', colorize: true });
+  html += dreDataRow('Fluxo de Caixa acumulado (final do ano)', yearlyEndValues(r.cashFlow, anos), { rowClass: 'hero-row', colorize: true, showTotal: false });
   return html;
 }
 
 function renderFluxoTable(r) {
-  document.getElementById('fluxoTable').innerHTML = dreTableHtml(fluxoRowsHtml(r));
+  const headers = Array.from({ length: r.anos }, (_, i) => `Ano ${i + 1}`);
+  document.getElementById('fluxoTable').innerHTML = dreTableHtml(fluxoRowsHtml(r), headers, 'Total Contrato');
 }
 
 // ---------- Print Report (export) ----------
