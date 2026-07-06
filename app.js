@@ -229,6 +229,13 @@ function statCardsData(model, r) {
   ];
 }
 
+function renderHeroStats(model, r) {
+  document.getElementById('heroInvestimento').textContent = brl(-r.investimentoInicial);
+  document.getElementById('heroFaturamento').textContent = brl(r.faturamentoAno1);
+  document.getElementById('heroBreakeven').textContent = r.breakEvenMonth ? `Mês ${r.breakEvenMonth}` : 'Não atingido';
+  document.getElementById('heroPayback').textContent = r.paybackMonth ? `Mês ${r.paybackMonth}` : 'Não atingido';
+}
+
 function renderStats(model, r) {
   const grid = document.getElementById('statGrid');
   grid.innerHTML = '';
@@ -296,6 +303,91 @@ function renderChart(r, hostId) {
       ${labels}
     </svg>
   `;
+}
+
+// ---------- Render: Fluxo de Caixa detail chart (Receita/Despesa/Lucro/Acumulado + legenda) ----------
+function renderFluxoChart(r, hostId) {
+  const host = document.getElementById(hostId);
+  const gradId = 'grad-' + hostId;
+  const W = 900, H = 320, padL = 80, padR = 20, padT = 20, padB = 34;
+
+  const series = {
+    acumulado: r.cashFlow,
+    receita: r.monthlyRevenue,
+    despesa: r.monthlyExpense,
+    lucro: r.monthlyProfit,
+  };
+  const allVals = [].concat(...Object.values(series));
+  const min = Math.min(0, ...allVals);
+  const max = Math.max(0, ...allVals);
+  const range = (max - min) || 1;
+  const n = r.cashFlow.length;
+  const x = i => padL + (i / (n - 1)) * (W - padL - padR);
+  const y = v => padT + (1 - (v - min) / range) * (H - padT - padB);
+  const zeroY = y(0);
+
+  const line = arr => arr.map((v, i) => `${x(i)},${y(v)}`).join(' ');
+  const areaPath = arr => `M${x(0)},${zeroY} ` + arr.map((v, i) => `L${x(i)},${y(v)}`).join(' ') + ` L${x(n - 1)},${zeroY} Z`;
+
+  let gridLines = '', labels = '';
+  for (let i = 0; i < n; i++) {
+    labels += `<text x="${x(i)}" y="${H - 12}" font-size="11" fill="#7A7876" text-anchor="middle">${MESES[i]}</text>`;
+  }
+  const yTicks = 4;
+  for (let t = 0; t <= yTicks; t++) {
+    const val = min + (range * t / yTicks);
+    const yy = y(val);
+    gridLines += `<line x1="${padL}" y1="${yy}" x2="${W - padR}" y2="${yy}" stroke="#E1DDD5" stroke-width="1"/>`;
+    gridLines += `<text x="${padL - 10}" y="${yy + 4}" font-size="10" fill="#7A7876" text-anchor="end">${brl(val)}</text>`;
+  }
+
+  let breakEvenMarker = '', breakEvenLabel = '';
+  if (r.breakEvenMonth) {
+    const idx = r.breakEvenMonth - 1;
+    const cx = x(idx), cy = y(series.lucro[idx]);
+    breakEvenMarker = `<circle cx="${cx}" cy="${cy}" r="5" fill="#2E7D4F" stroke="#FDFDFD" stroke-width="2"/>`;
+    breakEvenLabel = `<text x="${cx}" y="${cy - 10}" font-size="10" font-weight="700" fill="#2E7D4F" text-anchor="middle">Breakeven</text>`;
+  }
+  let paybackMarker = '', paybackLabel = '';
+  if (r.paybackMonth) {
+    const idx = r.paybackMonth - 1;
+    const cx = x(idx), cy = y(series.acumulado[idx]);
+    paybackMarker = `<circle cx="${cx}" cy="${cy}" r="5" fill="#927245" stroke="#FDFDFD" stroke-width="2"/>`;
+    paybackLabel = `<text x="${cx}" y="${cy + 18}" font-size="10" font-weight="700" fill="#927245" text-anchor="middle">Payback</text>`;
+  }
+
+  host.innerHTML = `
+    <svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto;display:block;">
+      ${gridLines}
+      <line x1="${padL}" y1="${zeroY}" x2="${W - padR}" y2="${zeroY}" stroke="#7A7876" stroke-width="1" stroke-dasharray="4 3"/>
+      <path d="${areaPath(series.acumulado)}" fill="url(#${gradId})" opacity="0.18"/>
+      <defs>
+        <linearGradient id="${gradId}" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="#927245"/>
+          <stop offset="100%" stop-color="#927245" stop-opacity="0"/>
+        </linearGradient>
+      </defs>
+      <polyline points="${line(series.receita)}" fill="none" stroke="#2E7D4F" stroke-width="2"/>
+      <polyline points="${line(series.despesa)}" fill="none" stroke="#B23B3B" stroke-width="2"/>
+      <polyline points="${line(series.lucro)}" fill="none" stroke="#1F1F1F" stroke-width="1.75" stroke-dasharray="5 4"/>
+      <polyline points="${line(series.acumulado)}" fill="none" stroke="#927245" stroke-width="3"/>
+      ${breakEvenMarker}${paybackMarker}
+      ${breakEvenLabel}${paybackLabel}
+      ${labels}
+    </svg>
+  `;
+
+  const legendHost = document.getElementById('chartLegendFluxo');
+  if (legendHost) {
+    legendHost.innerHTML = `
+      <span class="item"><span class="sw" style="border-color:#2E7D4F"></span>Receita</span>
+      <span class="item"><span class="sw" style="border-color:#B23B3B"></span>Despesa</span>
+      <span class="item"><span class="sw dashed" style="border-color:#1F1F1F"></span>Lucro</span>
+      <span class="item"><span class="sw" style="border-color:#927245;border-top-width:4px;"></span>Caixa acumulado</span>
+      <span class="item"><span class="sw dot" style="background:#2E7D4F"></span>Breakeven<b>${r.breakEvenMonth ? `Mês ${r.breakEvenMonth}` : 'não atingido'}</b></span>
+      <span class="item"><span class="sw dot" style="background:#927245"></span>Payback<b>${r.paybackMonth ? `Mês ${r.paybackMonth}` : 'não atingido'}</b></span>
+    `;
+  }
 }
 
 // ---------- Render: DRE / Fluxo de Caixa Tables ----------
@@ -443,9 +535,10 @@ function update() {
   const r = simulate(model);
   lastModel = model;
   lastResult = r;
+  renderHeroStats(model, r);
   renderStats(model, r);
   renderChart(r, 'chartHost');
-  renderChart(r, 'chartHostFluxo');
+  renderFluxoChart(r, 'chartHostFluxo');
   renderDRE(r);
   renderFluxoTable(r);
 }

@@ -273,6 +273,12 @@ table.premissas-table td .tkm-val{position:relative;z-index:1;font-weight:700;co
 
 .chart-box{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px;box-shadow:0 1px 2px rgba(31,31,31,0.04);}
 .chart-box h5{margin:0 0 12px;font-size:0.8rem;color:var(--grafite);font-weight:700;text-transform:uppercase;letter-spacing:0.6px;}
+.chart-legend{display:flex;flex-wrap:wrap;gap:10px 20px;margin-top:14px;padding-top:14px;border-top:1px solid var(--border);}
+.chart-legend .item{display:flex;align-items:center;gap:7px;font-size:0.78rem;color:var(--text);}
+.chart-legend .sw{width:16px;height:0;border-top:3px solid; display:inline-block;}
+.chart-legend .sw.dashed{border-top-style:dashed;}
+.chart-legend .sw.dot{width:9px;height:9px;border-radius:50%;border:none;}
+.chart-legend .item b{color:var(--text-muted);font-weight:600;margin-left:2px;}
 svg text{font-family:-apple-system,Roboto,sans-serif;}
 
 /* DRE / FLUXO TABLE */
@@ -339,10 +345,10 @@ footer img{height:26px;opacity:0.6;margin-bottom:14px;}
     <h1>Plano de <span class="accent">Expansão de Franquias</span></h1>
     <p class="tag">Modelos de negócio, portfólio de produtos e simulação financeira para apresentação de franquias Grupo Studio.</p>
     <div class="pill-row">
-      <span class="pill"><b>5</b> modelos de franquia</span>
-      <span class="pill"><b>13</b> linhas de produto</span>
-      <span class="pill">Atuação <b>nacional</b></span>
-      <span class="pill">Contratos de <b>3 a 10 anos</b></span>
+      <span class="pill">Investimento inicial <b id="heroInvestimento">—</b></span>
+      <span class="pill">Faturamento Ano 1 <b id="heroFaturamento">—</b></span>
+      <span class="pill">Breakeven <b id="heroBreakeven">—</b></span>
+      <span class="pill">Payback <b id="heroPayback">—</b></span>
     </div>
   </div>
 </div>
@@ -429,8 +435,9 @@ footer img{height:26px;opacity:0.6;margin-bottom:14px;}
         <p>Reflete o modelo e os contratos informados na aba Simulador.</p>
       </div>
       <div class="data-box" style="margin-bottom:20px;">
-        <h5>Fluxo de caixa acumulado — Ano 1</h5>
+        <h5>Receita, despesa, lucro e caixa acumulado — Ano 1</h5>
         <div id="chartHostFluxo"></div>
+        <div class="chart-legend" id="chartLegendFluxo"></div>
       </div>
       <div class="data-box">
         <div class="dre-scroll" id="fluxoTable"></div>
