@@ -52,12 +52,13 @@ function renderModelCards() {
 function renderPremissas() {
   const host = document.getElementById('premissasTable');
   const maxTkm = Math.max(...PRODUCTS.map(p => p.tkm));
-  const groupHead = label => `<tr class="group-head"><td class="name" colspan="5">${label}</td></tr>`;
+  const groupHead = label => `<tr class="group-head"><td class="name" colspan="6">${label}</td></tr>`;
   const row = p => `
     <tr>
       <td class="name">${p.nome}</td>
+      <td>${brl(p.totalCreditos)}</td>
+      <td>${pct(p.pctHonorarios)}</td>
       <td><div class="tkm-wrap"><div class="tkm-bar" style="width:${(p.tkm / maxTkm) * 100}%"></div><span class="tkm-val">${brl(p.tkm)}</span></div></td>
-      <td>${pct(p.aprovacao)}</td>
       <td>${p.tempo}º mês</td>
       <td>${p.parcelas}x</td>
     </tr>`;
@@ -67,9 +68,10 @@ function renderPremissas() {
       <thead>
         <tr>
           <th class="name">Produto</th>
-          <th>Ticket médio (TKM)</th>
-          <th>Taxa de aprovação</th>
-          <th>1ª parcela</th>
+          <th>Total de Créditos</th>
+          <th>% Honorários</th>
+          <th>TKM Produtos</th>
+          <th>Tempo até 1ª parcela</th>
           <th>Parcelas</th>
         </tr>
       </thead>
