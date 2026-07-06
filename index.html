@@ -228,8 +228,9 @@ section.alt{background:var(--card-2);border-top:1px solid var(--border);border-b
 }
 .franqueado-field input:focus{outline:none;border-color:var(--duna);}
 
-.stat-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:24px;}
+.stat-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:24px;}
 @media (max-width:760px){.stat-grid{grid-template-columns:repeat(2,1fr);}}
+@media (max-width:480px){.stat-grid{grid-template-columns:1fr;}}
 .stat-card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px 18px;}
 .stat-card .label{font-size:0.68rem;text-transform:uppercase;letter-spacing:0.6px;color:var(--cinza-escuro);}
 .stat-card .value{font-size:1.35rem;font-weight:700;font-family:-apple-system,Roboto,sans-serif;margin-top:4px;}
@@ -241,6 +242,25 @@ section.alt{background:var(--card-2);border-top:1px solid var(--border);border-b
 .chart-box{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:20px;}
 .chart-box h5{margin:0 0 12px;font-size:0.8rem;color:var(--cinza-neutro);font-weight:600;text-transform:uppercase;letter-spacing:0.6px;}
 svg text{font-family:-apple-system,Roboto,sans-serif;}
+
+/* DRE TABLE */
+.dre-box{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:20px;margin-top:24px;}
+.dre-box h5{margin:0 0 4px;font-size:0.8rem;color:var(--cinza-neutro);font-weight:600;text-transform:uppercase;letter-spacing:0.6px;}
+.dre-box .dre-sub{font-size:0.76rem;color:var(--cinza-escuro);margin:0 0 14px;}
+.dre-scroll{overflow-x:auto;}
+table.dre-table{width:100%;border-collapse:collapse;font-size:0.78rem;white-space:nowrap;}
+table.dre-table th, table.dre-table td{padding:7px 10px;text-align:right;border-bottom:1px solid var(--border);}
+table.dre-table th{color:var(--cinza-escuro);font-weight:600;font-size:0.68rem;text-transform:uppercase;letter-spacing:0.4px;}
+table.dre-table td.label, table.dre-table th.label{
+  text-align:left;position:sticky;left:0;background:var(--card);color:var(--cinza-neutro);min-width:170px;
+}
+table.dre-table th.label{background:var(--card);}
+table.dre-table tr.group-head td{color:var(--duna);font-weight:700;padding-top:16px;font-size:0.72rem;text-transform:uppercase;letter-spacing:0.6px;border-bottom:1px solid var(--border);background:transparent;}
+table.dre-table tr.total-row td{font-weight:700;color:var(--branco);border-top:1px solid var(--border);}
+table.dre-table tr.hero-row td{font-weight:700;font-size:0.86rem;border-top:2px solid var(--bronze);padding-top:10px;}
+table.dre-table td.pos{color:var(--green);}
+table.dre-table td.neg{color:var(--red);}
+table.dre-table td.total-col{border-left:1px solid var(--border);}
 
 footer{padding:36px 0;text-align:center;color:var(--cinza-escuro);font-size:0.75rem;}
 footer .disclaimer{max-width:720px;margin:0 auto 18px;line-height:1.6;}
@@ -264,6 +284,15 @@ footer img{height:26px;opacity:0.6;margin-bottom:14px;}
 #printReport .p-sign{display:grid;grid-template-columns:1fr 1fr;gap:40px;margin-top:56px;}
 #printReport .p-sign .line{border-top:1px solid #444;margin-top:46px;padding-top:8px;font-size:0.78rem;color:#333;}
 #printReport .p-sign .line small{display:block;color:#888;margin-top:2px;}
+#printReport .p-dre{overflow-x:auto;}
+#printReport .p-dre table{width:100%;border-collapse:collapse;font-size:0.64rem;white-space:nowrap;}
+#printReport .p-dre th, #printReport .p-dre td{padding:4px 6px;text-align:right;border-bottom:1px solid #eee;}
+#printReport .p-dre th.label, #printReport .p-dre td.label{text-align:left;color:#333;min-width:130px;}
+#printReport .p-dre tr.group-head td{color:#927245;font-weight:700;padding-top:8px;font-size:0.6rem;text-transform:uppercase;}
+#printReport .p-dre tr.total-row td{font-weight:700;color:#111;border-top:1px solid #ccc;}
+#printReport .p-dre tr.hero-row td{font-weight:700;border-top:2px solid #927245;}
+#printReport .p-dre td.pos{color:#2e7d4f;}
+#printReport .p-dre td.neg{color:#b23b3b;}
 
 @media print{
   body > *:not(#printReport){display:none !important;}
@@ -336,6 +365,11 @@ footer img{height:26px;opacity:0.6;margin-bottom:14px;}
         <div class="chart-box">
           <h5>Fluxo de caixa acumulado — Ano 1</h5>
           <div id="chartHost"></div>
+        </div>
+        <div class="dre-box">
+          <h5>DRE Financeiro — Ano 1</h5>
+          <p class="dre-sub">Honorários (regime de competência), Faturamento (regime de caixa, por parcela), despesas e fluxo de caixa mês a mês.</p>
+          <div class="dre-scroll" id="dreTable"></div>
         </div>
       </div>
     </div>
