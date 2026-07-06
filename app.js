@@ -48,30 +48,39 @@ function renderModelCards() {
   });
 }
 
-// ---------- Render: Product Bars ----------
-function renderProducts() {
-  const host = document.getElementById('productsCols');
-  host.innerHTML = '';
+// ---------- Render: Premissas & Produtos Table ----------
+function renderPremissas() {
+  const host = document.getElementById('premissasTable');
   const maxTkm = Math.max(...PRODUCTS.map(p => p.tkm));
-  ['tax', 'corporate'].forEach(grupo => {
-    const col = el('div', 'product-group');
-    col.appendChild(el('h4', null, grupo === 'tax' ? 'Linha Tax' : 'Linha Corporate'));
-    PRODUCTS.filter(p => p.grupo === grupo).forEach(p => {
-      const row = el('div', 'product-row');
-      row.appendChild(el('span', 'name', p.nome));
-      row.appendChild(el('span', 'value', brl(p.tkm)));
-      const meta = el('span', 'meta', `${pct(p.aprovacao)} de êxito · ${p.tempo}m até 1ª parcela · ${p.parcelas}x`);
-      meta.style.gridColumn = '1/-1';
-      row.appendChild(meta);
-      const track = el('div', 'bar-track');
-      const fill = el('div', 'bar-fill');
-      fill.style.width = `${(p.tkm / maxTkm) * 100}%`;
-      track.appendChild(fill);
-      row.appendChild(track);
-      col.appendChild(row);
-    });
-    host.appendChild(col);
-  });
+  const groupHead = label => `<tr class="group-head"><td class="name" colspan="5">${label}</td></tr>`;
+  const row = p => `
+    <tr>
+      <td class="name">${p.nome}</td>
+      <td><div class="tkm-wrap"><div class="tkm-bar" style="width:${(p.tkm / maxTkm) * 100}%"></div><span class="tkm-val">${brl(p.tkm)}</span></div></td>
+      <td>${pct(p.aprovacao)}</td>
+      <td>${p.tempo}º mês</td>
+      <td>${p.parcelas}x</td>
+    </tr>`;
+
+  let html = `
+    <table class="premissas-table">
+      <thead>
+        <tr>
+          <th class="name">Produto</th>
+          <th>Ticket médio (TKM)</th>
+          <th>Taxa de aprovação</th>
+          <th>1ª parcela</th>
+          <th>Parcelas</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${groupHead('Linha Tax')}
+        ${PRODUCTS.filter(p => p.grupo === 'tax').map(row).join('')}
+        ${groupHead('Linha Corporate')}
+        ${PRODUCTS.filter(p => p.grupo === 'corporate').map(row).join('')}
+      </tbody>
+    </table>`;
+  host.innerHTML = html;
 }
 
 // ---------- Simulator State ----------
@@ -234,8 +243,9 @@ function renderStats(model, r) {
 // ---------- Render: Chart ----------
 const MESES = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
 
-function renderChart(r) {
-  const host = document.getElementById('chartHost');
+function renderChart(r, hostId) {
+  const host = document.getElementById(hostId || 'chartHost');
+  const gradId = 'grad-' + (hostId || 'chartHost');
   const W = 900, H = 300, padL = 70, padR = 20, padT = 20, padB = 34;
   const values = r.cashFlow;
   const min = Math.min(0, ...values);
@@ -250,20 +260,20 @@ function renderChart(r) {
   let breakEvenMarker = '';
   if (r.breakEvenMonth) {
     const idx = r.breakEvenMonth - 1;
-    breakEvenMarker = `<circle cx="${x(idx)}" cy="${y(values[idx])}" r="5" fill="#D5AE77" stroke="#161514" stroke-width="2"/>`;
+    breakEvenMarker = `<circle cx="${x(idx)}" cy="${y(values[idx])}" r="5" fill="#927245" stroke="#FDFDFD" stroke-width="2"/>`;
   }
 
   let gridLines = '';
   let labels = '';
   for (let i = 0; i < values.length; i++) {
-    labels += `<text x="${x(i)}" y="${H - 12}" font-size="11" fill="#828384" text-anchor="middle">${MESES[i]}</text>`;
+    labels += `<text x="${x(i)}" y="${H - 12}" font-size="11" fill="#7A7876" text-anchor="middle">${MESES[i]}</text>`;
   }
   const yTicks = 4;
   for (let t = 0; t <= yTicks; t++) {
     const val = min + (range * t / yTicks);
     const yy = y(val);
-    gridLines += `<line x1="${padL}" y1="${yy}" x2="${W - padR}" y2="${yy}" stroke="#3a352d" stroke-width="1"/>`;
-    gridLines += `<text x="${padL - 10}" y="${yy + 4}" font-size="10" fill="#828384" text-anchor="end">${brl(val)}</text>`;
+    gridLines += `<line x1="${padL}" y1="${yy}" x2="${W - padR}" y2="${yy}" stroke="#E1DDD5" stroke-width="1"/>`;
+    gridLines += `<text x="${padL - 10}" y="${yy + 4}" font-size="10" fill="#7A7876" text-anchor="end">${brl(val)}</text>`;
   }
 
   const areaPath = `M${x(0)},${zeroY} ` + values.map((v, i) => `L${x(i)},${y(v)}`).join(' ') + ` L${x(values.length - 1)},${zeroY} Z`;
@@ -271,33 +281,47 @@ function renderChart(r) {
   host.innerHTML = `
     <svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto;display:block;">
       ${gridLines}
-      <line x1="${padL}" y1="${zeroY}" x2="${W - padR}" y2="${zeroY}" stroke="#828384" stroke-width="1" stroke-dasharray="4 3"/>
-      <path d="${areaPath}" fill="url(#grad)" opacity="0.18"/>
+      <line x1="${padL}" y1="${zeroY}" x2="${W - padR}" y2="${zeroY}" stroke="#7A7876" stroke-width="1" stroke-dasharray="4 3"/>
+      <path d="${areaPath}" fill="url(#${gradId})" opacity="0.20"/>
       <defs>
-        <linearGradient id="grad" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stop-color="#D5AE77"/>
-          <stop offset="100%" stop-color="#D5AE77" stop-opacity="0"/>
+        <linearGradient id="${gradId}" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="#927245"/>
+          <stop offset="100%" stop-color="#927245" stop-opacity="0"/>
         </linearGradient>
       </defs>
-      <polyline points="${points}" fill="none" stroke="#D5AE77" stroke-width="2.5"/>
+      <polyline points="${points}" fill="none" stroke="#927245" stroke-width="2.5"/>
       ${breakEvenMarker}
       ${labels}
     </svg>
   `;
 }
 
-// ---------- Render: DRE Table ----------
-function dreRowsHtml(r) {
-  const sum = arr => arr.reduce((a, b) => a + b, 0);
+// ---------- Render: DRE / Fluxo de Caixa Tables ----------
+function dreDataRow(label, arr, opts) {
+  const sum = a => a.reduce((x, y) => x + y, 0);
   const cell = (v, cls) => `<td class="${cls || ''}">${brl(v)}</td>`;
-  const dataRow = (label, arr, opts) => {
-    opts = opts || {};
-    const cls = opts.rowClass || '';
-    const cells = arr.map(v => cell(v, opts.colorize ? (v >= 0 ? 'pos' : 'neg') : '')).join('');
-    const total = opts.showTotal !== false ? `<td class="total-col ${opts.colorize ? (sum(arr) >= 0 ? 'pos' : 'neg') : ''}">${brl(sum(arr))}</td>` : '<td class="total-col"></td>';
-    return `<tr class="${cls}"><td class="label">${label}</td>${cells}${total}</tr>`;
-  };
-  const groupHead = label => `<tr class="group-head"><td class="label" colspan="14">${label}</td></tr>`;
+  opts = opts || {};
+  const cls = opts.rowClass || '';
+  const cells = arr.map(v => cell(v, opts.colorize ? (v >= 0 ? 'pos' : 'neg') : '')).join('');
+  const total = opts.showTotal !== false ? `<td class="total-col ${opts.colorize ? (sum(arr) >= 0 ? 'pos' : 'neg') : ''}">${brl(sum(arr))}</td>` : '<td class="total-col"></td>';
+  return `<tr class="${cls}"><td class="label">${label}</td>${cells}${total}</tr>`;
+}
+function dreGroupHead(label) {
+  return `<tr class="group-head"><td class="label" colspan="14">${label}</td></tr>`;
+}
+function dreTableHtml(rowsHtml) {
+  const headerCols = MESES.map(m => `<th>${m}</th>`).join('');
+  return `
+    <table class="dre-table">
+      <thead><tr><th class="label">R$</th>${headerCols}<th class="total-col">Total Ano 1</th></tr></thead>
+      <tbody>${rowsHtml}</tbody>
+    </table>
+  `;
+}
+
+function dreRowsHtml(r) {
+  const dataRow = dreDataRow;
+  const groupHead = dreGroupHead;
 
   let html = '';
   html += groupHead('Honorários (competência)');
@@ -327,14 +351,20 @@ function dreRowsHtml(r) {
 }
 
 function renderDRE(r) {
-  const host = document.getElementById('dreTable');
-  const headerCols = MESES.map(m => `<th>${m}</th>`).join('');
-  host.innerHTML = `
-    <table class="dre-table">
-      <thead><tr><th class="label">R$</th>${headerCols}<th class="total-col">Total Ano 1</th></tr></thead>
-      <tbody>${dreRowsHtml(r)}</tbody>
-    </table>
-  `;
+  document.getElementById('dreTable').innerHTML = dreTableHtml(dreRowsHtml(r));
+}
+
+function fluxoRowsHtml(r) {
+  let html = '';
+  html += dreDataRow('Faturamento', r.monthlyRevenue, { rowClass: 'total-row' });
+  html += dreDataRow('Despesas', r.monthlyExpense, { rowClass: 'total-row' });
+  html += dreDataRow('Lucro', r.monthlyProfit, { rowClass: 'hero-row', colorize: true });
+  html += dreDataRow('Fluxo de Caixa acumulado', r.cashFlow, { rowClass: 'hero-row', colorize: true, showTotal: false });
+  return html;
+}
+
+function renderFluxoTable(r) {
+  document.getElementById('fluxoTable').innerHTML = dreTableHtml(fluxoRowsHtml(r));
 }
 
 // ---------- Print Report (export) ----------
@@ -412,8 +442,10 @@ function update() {
   lastModel = model;
   lastResult = r;
   renderStats(model, r);
-  renderChart(r);
+  renderChart(r, 'chartHost');
+  renderChart(r, 'chartHostFluxo');
   renderDRE(r);
+  renderFluxoTable(r);
 }
 
 document.getElementById('resetBtn').addEventListener('click', () => {
@@ -427,8 +459,21 @@ document.getElementById('exportBtn').addEventListener('click', () => {
   window.print();
 });
 
+// ---------- Tabs ----------
+function initTabs() {
+  document.querySelectorAll('.tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+      btn.classList.add('active');
+      document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
+    });
+  });
+}
+
 renderModelCards();
-renderProducts();
+renderPremissas();
 renderModelPills();
 renderFieldGroups();
+initTabs();
 update();

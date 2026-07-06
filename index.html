@@ -14,18 +14,20 @@
   --cinza-claro:#EBEBEB;
   --cinza-neutro:#CDCDCD;
   --cinza-escuro:#828384;
-  --bg:#161514;
-  --card:#211F1D;
-  --card-2:#28251f;
-  --border:#3a352d;
-  --green:#5FBE7A;
-  --red:#E36B6B;
+  --bg:#FDFDFD;
+  --surface:#FFFFFF;
+  --surface-alt:#F2F0EC;
+  --border:#E1DDD5;
+  --text:#1F1F1F;
+  --text-muted:#7A7876;
+  --green:#2E7D4F;
+  --red:#B23B3B;
 }
 *{box-sizing:border-box;}
 html,body{margin:0;padding:0;}
 body{
   background:var(--bg);
-  color:var(--branco);
+  color:var(--text);
   font-family:'Georgia','Times New Roman',serif;
   line-height:1.5;
 }
@@ -34,29 +36,29 @@ body{
 body, p, td, th, input, button, .sans-all{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;}
 h1,h2,h3,.brand{font-family:'Georgia','Times New Roman',serif;}
 
-a{color:var(--duna);}
+a{color:var(--bronze);}
 .wrap{max-width:1180px;margin:0 auto;padding:0 24px;}
 
 /* HERO */
 .hero{
   background:
-    radial-gradient(1100px 500px at 15% -10%, rgba(213,174,119,0.16), transparent 60%),
-    linear-gradient(180deg, var(--grafite) 0%, var(--bg) 100%);
+    radial-gradient(1100px 500px at 15% -10%, rgba(146,114,69,0.08), transparent 60%),
+    linear-gradient(180deg, var(--surface-alt) 0%, var(--bg) 100%);
   border-bottom:1px solid var(--border);
-  padding:64px 0 56px;
+  padding:52px 0 36px;
   text-align:center;
 }
-.hero img.logo{height:64px;margin-bottom:28px;}
+.hero img.logo{height:60px;margin-bottom:24px;}
 .hero h1{
-  font-size:2.6rem;
+  font-size:2.4rem;
   margin:0 0 12px;
-  letter-spacing:0.5px;
-  color:var(--branco);
+  letter-spacing:0.3px;
+  color:var(--grafite);
 }
-.hero .accent{color:var(--duna);}
+.hero .accent{color:var(--bronze);}
 .hero p.tag{
-  color:var(--cinza-neutro);
-  font-size:1.05rem;
+  color:var(--text-muted);
+  font-size:1.02rem;
   max-width:640px;
   margin:0 auto;
 }
@@ -64,32 +66,64 @@ a{color:var(--duna);}
   display:flex;
   justify-content:center;
   gap:12px;
-  margin-top:28px;
+  margin-top:24px;
   flex-wrap:wrap;
 }
 .hero .pill{
   border:1px solid var(--border);
-  background:rgba(255,255,255,0.03);
+  background:var(--surface);
   padding:8px 18px;
   border-radius:999px;
   font-size:0.82rem;
-  color:var(--cinza-neutro);
+  color:var(--text-muted);
   letter-spacing:0.3px;
 }
-.hero .pill b{color:var(--duna);font-weight:600;}
+.hero .pill b{color:var(--bronze);font-weight:700;}
 
-section{padding:64px 0;}
-section.alt{background:var(--card-2);border-top:1px solid var(--border);border-bottom:1px solid var(--border);}
-.section-head{text-align:center;margin-bottom:40px;}
+/* TAB NAV */
+.tabnav{
+  position:sticky;top:0;z-index:20;
+  background:rgba(253,253,253,0.92);
+  backdrop-filter:blur(6px);
+  border-bottom:1px solid var(--border);
+}
+.tabnav-inner{display:flex;gap:4px;overflow-x:auto;padding:10px 24px;}
+.tab-btn{
+  font-family:-apple-system,Roboto,sans-serif;
+  white-space:nowrap;
+  border:1px solid transparent;
+  background:transparent;
+  color:var(--text-muted);
+  font-size:0.85rem;
+  font-weight:600;
+  padding:10px 16px;
+  border-radius:8px;
+  cursor:pointer;
+  transition:background .15s ease, color .15s ease;
+}
+.tab-btn .n{
+  display:inline-block;min-width:18px;height:18px;line-height:18px;border-radius:999px;
+  background:var(--cinza-claro);color:var(--text-muted);font-size:0.68rem;font-weight:700;margin-right:6px;
+}
+.tab-btn:hover{background:var(--surface-alt);color:var(--text);}
+.tab-btn.active{background:var(--taupe);color:var(--branco);}
+.tab-btn.active .n{background:var(--duna);color:var(--grafite);}
+
+.tab-panel{display:none;}
+.tab-panel.active{display:block;}
+
+section{padding:44px 0;}
+section.alt{background:var(--surface-alt);border-top:1px solid var(--border);border-bottom:1px solid var(--border);}
+.section-head{text-align:center;margin-bottom:36px;}
 .section-head .eyebrow{
   text-transform:uppercase;
   letter-spacing:2px;
   font-size:0.72rem;
-  color:var(--duna);
-  font-weight:600;
+  color:var(--bronze);
+  font-weight:700;
 }
-.section-head h2{font-size:1.9rem;margin:8px 0 10px;color:var(--branco);}
-.section-head p{color:var(--cinza-neutro);max-width:620px;margin:0 auto;font-size:0.95rem;}
+.section-head h2{font-size:1.7rem;margin:8px 0 10px;color:var(--grafite);}
+.section-head p{color:var(--text-muted);max-width:620px;margin:0 auto;font-size:0.95rem;}
 
 /* MODEL CARDS */
 .models-grid{
@@ -102,19 +136,20 @@ section.alt{background:var(--card-2);border-top:1px solid var(--border);border-b
 @media (max-width:520px){ .models-grid{grid-template-columns:1fr;} }
 
 .model-card{
-  background:var(--card);
+  background:var(--surface);
   border:1px solid var(--border);
   border-radius:14px;
   padding:22px 18px;
   display:flex;
   flex-direction:column;
   gap:14px;
-  transition:transform .15s ease, border-color .15s ease;
+  box-shadow:0 1px 2px rgba(31,31,31,0.04);
+  transition:transform .15s ease, border-color .15s ease, box-shadow .15s ease;
 }
-.model-card:hover{transform:translateY(-3px);border-color:var(--bronze);}
+.model-card:hover{transform:translateY(-3px);border-color:var(--bronze);box-shadow:0 8px 20px rgba(31,31,31,0.08);}
 .model-card.flagship{
   border-color:var(--duna);
-  background:linear-gradient(160deg, rgba(213,174,119,0.10), var(--card) 55%);
+  background:linear-gradient(160deg, rgba(213,174,119,0.12), var(--surface) 55%);
 }
 .model-card .badge{
   align-self:flex-start;
@@ -127,142 +162,136 @@ section.alt{background:var(--card-2);border-top:1px solid var(--border);border-b
   border-radius:999px;
   font-weight:700;
 }
-.model-card h3{margin:0;font-size:1.15rem;color:var(--branco);}
-.model-card .price{font-size:1.5rem;color:var(--duna);font-weight:700;font-family:-apple-system,Roboto,sans-serif;}
-.model-card .price small{font-size:0.65rem;color:var(--cinza-neutro);font-weight:400;display:block;}
-.model-card dl{margin:0;font-size:0.8rem;color:var(--cinza-neutro);}
+.model-card h3{margin:0;font-size:1.15rem;color:var(--grafite);}
+.model-card .price{font-size:1.5rem;color:var(--bronze);font-weight:700;font-family:-apple-system,Roboto,sans-serif;}
+.model-card .price small{font-size:0.65rem;color:var(--text-muted);font-weight:400;display:block;}
+.model-card dl{margin:0;font-size:0.8rem;color:var(--text-muted);}
 .model-card dl .row{display:flex;justify-content:space-between;padding:6px 0;border-top:1px solid var(--border);}
-.model-card dl .row span:last-child{color:var(--branco);text-align:right;max-width:56%;}
-.model-card .tag-yes{color:var(--green);}
+.model-card dl .row span:last-child{color:var(--text);text-align:right;max-width:56%;}
+.model-card .tag-yes{color:var(--green);font-weight:600;}
 .model-card .tag-no{color:var(--cinza-escuro);}
-.model-card .estrutura{font-size:0.76rem;color:var(--cinza-neutro);border-top:1px solid var(--border);padding-top:10px;font-style:italic;}
+.model-card .estrutura{font-size:0.76rem;color:var(--text-muted);border-top:1px solid var(--border);padding-top:10px;font-style:italic;}
 
-/* PRODUCTS */
-.products-cols{display:grid;grid-template-columns:1fr 1fr;gap:28px;}
-@media (max-width:820px){.products-cols{grid-template-columns:1fr;}}
-.product-group h4{
-  font-family:-apple-system,Roboto,sans-serif;
-  text-transform:uppercase;
-  letter-spacing:1px;
-  font-size:0.78rem;
-  color:var(--duna);
-  margin-bottom:14px;
-  border-bottom:1px solid var(--border);
-  padding-bottom:8px;
-}
-.product-row{
-  display:grid;
-  grid-template-columns:1fr auto;
-  align-items:center;
-  gap:10px;
-  padding:10px 0;
-  border-bottom:1px solid var(--border);
-}
-.product-row .name{font-size:0.88rem;color:var(--branco);}
-.product-row .meta{font-size:0.72rem;color:var(--cinza-escuro);}
-.product-row .bar-track{
-  grid-column:1/-1;
-  background:rgba(255,255,255,0.05);
-  border-radius:6px;
-  height:8px;
-  overflow:hidden;
-  margin-top:2px;
-}
-.product-row .bar-fill{
-  height:100%;
-  background:linear-gradient(90deg,var(--bronze),var(--duna));
-  border-radius:6px;
-}
-.product-row .value{font-size:0.86rem;color:var(--duna);font-weight:700;font-family:-apple-system,Roboto,sans-serif;text-align:right;}
+/* GENERIC DATA CARD */
+.data-box{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px;box-shadow:0 1px 2px rgba(31,31,31,0.04);}
+.data-box h5{margin:0 0 4px;font-size:0.8rem;color:var(--grafite);font-weight:700;text-transform:uppercase;letter-spacing:0.6px;}
+.data-box .sub{font-size:0.76rem;color:var(--text-muted);margin:0 0 14px;}
+
+/* PREMISSAS TABLE */
+.premissas-scroll{overflow-x:auto;}
+table.premissas-table{width:100%;border-collapse:collapse;font-size:0.84rem;}
+table.premissas-table th, table.premissas-table td{padding:10px 12px;text-align:right;border-bottom:1px solid var(--border);}
+table.premissas-table th{color:var(--text-muted);font-weight:700;font-size:0.68rem;text-transform:uppercase;letter-spacing:0.4px;}
+table.premissas-table td.name, table.premissas-table th.name{text-align:left;color:var(--text);}
+table.premissas-table tr.group-head td{color:var(--bronze);font-weight:700;padding-top:16px;font-size:0.72rem;text-transform:uppercase;letter-spacing:0.6px;background:transparent;}
+table.premissas-table td .tkm-wrap{position:relative;display:flex;align-items:center;justify-content:flex-end;gap:8px;}
+table.premissas-table td .tkm-bar{position:absolute;left:0;top:0;bottom:0;background:linear-gradient(90deg,rgba(146,114,69,0.14),rgba(213,174,119,0.22));border-radius:6px;z-index:0;}
+table.premissas-table td .tkm-val{position:relative;z-index:1;font-weight:700;color:var(--bronze);}
 
 /* SIMULATOR */
 .sim-layout{display:grid;grid-template-columns:360px 1fr;gap:28px;align-items:start;}
 @media (max-width:940px){.sim-layout{grid-template-columns:1fr;}}
-.panel{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:24px;}
+.panel{
+  background:var(--surface);border:2px solid var(--duna);border-radius:14px;padding:24px;
+  box-shadow:0 4px 16px rgba(146,114,69,0.08);
+}
+.panel .edit-hint{
+  display:flex;align-items:center;gap:8px;
+  background:rgba(213,174,119,0.16);border:1px solid rgba(213,174,119,0.4);
+  color:var(--bronze);font-weight:700;font-size:0.76rem;
+  padding:9px 12px;border-radius:8px;margin-bottom:18px;
+}
+.panel .edit-hint .ic{font-size:0.95rem;}
 .model-pills{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:20px;}
 .model-pill{
   border:1px solid var(--border);
-  background:transparent;
-  color:var(--cinza-neutro);
+  background:var(--surface);
+  color:var(--text-muted);
   padding:8px 14px;
   border-radius:999px;
   font-size:0.8rem;
   cursor:pointer;
   font-family:-apple-system,Roboto,sans-serif;
 }
-.model-pill.active{background:var(--duna);color:var(--grafite);border-color:var(--duna);font-weight:700;}
+.model-pill.active{background:var(--bronze);color:var(--branco);border-color:var(--bronze);font-weight:700;}
 .field-group h5{
-  font-size:0.72rem;text-transform:uppercase;letter-spacing:1px;color:var(--duna);
+  font-size:0.72rem;text-transform:uppercase;letter-spacing:1px;color:var(--bronze);
   margin:18px 0 8px;
 }
 .field-row{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:6px 0;}
-.field-row label{font-size:0.8rem;color:var(--cinza-neutro);}
+.field-row label{font-size:0.8rem;color:var(--text);}
 .field-row input{
-  width:70px;
-  background:var(--grafite);
-  border:1px solid var(--border);
-  color:var(--branco);
+  width:76px;
+  background:var(--branco);
+  border:1.5px solid var(--cinza-neutro);
+  color:var(--text);
   border-radius:6px;
-  padding:6px 8px;
+  padding:7px 8px;
   text-align:right;
   font-size:0.85rem;
+  font-weight:600;
 }
-.field-row input:focus{outline:none;border-color:var(--duna);}
+.field-row input:hover{border-color:var(--bronze);}
+.field-row input:focus{outline:none;border-color:var(--duna);box-shadow:0 0 0 3px rgba(213,174,119,0.25);}
 .reset-btn{
   margin-top:18px;width:100%;padding:10px;border-radius:8px;border:1px solid var(--border);
-  background:transparent;color:var(--cinza-neutro);cursor:pointer;font-size:0.78rem;
+  background:var(--surface);color:var(--text-muted);cursor:pointer;font-size:0.78rem;
 }
-.reset-btn:hover{border-color:var(--bronze);color:var(--branco);}
+.reset-btn:hover{border-color:var(--bronze);color:var(--text);}
 .export-btn{
-  margin-top:10px;width:100%;padding:10px;border-radius:8px;border:1px solid var(--duna);
-  background:var(--duna);color:var(--grafite);cursor:pointer;font-size:0.78rem;font-weight:700;
+  margin-top:10px;width:100%;padding:10px;border-radius:8px;border:1px solid var(--bronze);
+  background:var(--bronze);color:var(--branco);cursor:pointer;font-size:0.78rem;font-weight:700;
 }
-.export-btn:hover{background:#e2c08f;}
+.export-btn:hover{background:#7d5f39;}
 .franqueado-field{margin-bottom:18px;}
 .franqueado-field label{
-  display:block;font-size:0.72rem;text-transform:uppercase;letter-spacing:1px;color:var(--duna);margin-bottom:6px;
+  display:block;font-size:0.72rem;text-transform:uppercase;letter-spacing:1px;color:var(--bronze);margin-bottom:6px;
 }
 .franqueado-field input{
-  width:100%;background:var(--grafite);border:1px solid var(--border);color:var(--branco);
-  border-radius:6px;padding:8px 10px;font-size:0.85rem;
+  width:100%;background:var(--branco);border:1.5px solid var(--cinza-neutro);color:var(--text);
+  border-radius:6px;padding:9px 10px;font-size:0.85rem;font-weight:600;
 }
-.franqueado-field input:focus{outline:none;border-color:var(--duna);}
+.franqueado-field input:focus{outline:none;border-color:var(--duna);box-shadow:0 0 0 3px rgba(213,174,119,0.25);}
+
+.live-hint{
+  display:flex;align-items:center;gap:8px;margin-bottom:16px;
+  font-size:0.78rem;color:var(--text-muted);
+}
+.live-hint .dot{width:8px;height:8px;border-radius:999px;background:var(--green);animation:pulse 1.8s infinite;}
+@keyframes pulse{0%{opacity:1;}50%{opacity:0.35;}100%{opacity:1;}}
 
 .stat-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:24px;}
 @media (max-width:760px){.stat-grid{grid-template-columns:repeat(2,1fr);}}
 @media (max-width:480px){.stat-grid{grid-template-columns:1fr;}}
-.stat-card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px 18px;}
-.stat-card .label{font-size:0.68rem;text-transform:uppercase;letter-spacing:0.6px;color:var(--cinza-escuro);}
+.stat-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px 18px;box-shadow:0 1px 2px rgba(31,31,31,0.04);}
+.stat-card .label{font-size:0.68rem;text-transform:uppercase;letter-spacing:0.6px;color:var(--text-muted);}
 .stat-card .value{font-size:1.35rem;font-weight:700;font-family:-apple-system,Roboto,sans-serif;margin-top:4px;}
 .stat-card .value.pos{color:var(--green);}
 .stat-card .value.neg{color:var(--red);}
-.stat-card .value.neu{color:var(--duna);}
-.stat-card .sub{font-size:0.7rem;color:var(--cinza-escuro);margin-top:2px;}
+.stat-card .value.neu{color:var(--bronze);}
+.stat-card .sub{font-size:0.7rem;color:var(--text-muted);margin-top:2px;}
 
-.chart-box{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:20px;}
-.chart-box h5{margin:0 0 12px;font-size:0.8rem;color:var(--cinza-neutro);font-weight:600;text-transform:uppercase;letter-spacing:0.6px;}
+.chart-box{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px;box-shadow:0 1px 2px rgba(31,31,31,0.04);}
+.chart-box h5{margin:0 0 12px;font-size:0.8rem;color:var(--grafite);font-weight:700;text-transform:uppercase;letter-spacing:0.6px;}
 svg text{font-family:-apple-system,Roboto,sans-serif;}
 
-/* DRE TABLE */
-.dre-box{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:20px;margin-top:24px;}
-.dre-box h5{margin:0 0 4px;font-size:0.8rem;color:var(--cinza-neutro);font-weight:600;text-transform:uppercase;letter-spacing:0.6px;}
-.dre-box .dre-sub{font-size:0.76rem;color:var(--cinza-escuro);margin:0 0 14px;}
+/* DRE / FLUXO TABLE */
 .dre-scroll{overflow-x:auto;}
 table.dre-table{width:100%;border-collapse:collapse;font-size:0.78rem;white-space:nowrap;}
 table.dre-table th, table.dre-table td{padding:7px 10px;text-align:right;border-bottom:1px solid var(--border);}
-table.dre-table th{color:var(--cinza-escuro);font-weight:600;font-size:0.68rem;text-transform:uppercase;letter-spacing:0.4px;}
+table.dre-table th{color:var(--text-muted);font-weight:700;font-size:0.68rem;text-transform:uppercase;letter-spacing:0.4px;}
 table.dre-table td.label, table.dre-table th.label{
-  text-align:left;position:sticky;left:0;background:var(--card);color:var(--cinza-neutro);min-width:170px;
+  text-align:left;position:sticky;left:0;background:var(--surface);color:var(--text);min-width:170px;
 }
-table.dre-table th.label{background:var(--card);}
-table.dre-table tr.group-head td{color:var(--duna);font-weight:700;padding-top:16px;font-size:0.72rem;text-transform:uppercase;letter-spacing:0.6px;border-bottom:1px solid var(--border);background:transparent;}
-table.dre-table tr.total-row td{font-weight:700;color:var(--branco);border-top:1px solid var(--border);}
+table.dre-table th.label{background:var(--surface);}
+table.dre-table tr.group-head td{color:var(--bronze);font-weight:700;padding-top:16px;font-size:0.72rem;text-transform:uppercase;letter-spacing:0.6px;border-bottom:1px solid var(--border);background:transparent;}
+table.dre-table tr.total-row td{font-weight:700;color:var(--grafite);border-top:1px solid var(--border);}
 table.dre-table tr.hero-row td{font-weight:700;font-size:0.86rem;border-top:2px solid var(--bronze);padding-top:10px;}
 table.dre-table td.pos{color:var(--green);}
 table.dre-table td.neg{color:var(--red);}
 table.dre-table td.total-col{border-left:1px solid var(--border);}
 
-footer{padding:36px 0;text-align:center;color:var(--cinza-escuro);font-size:0.75rem;}
+footer{padding:36px 0;text-align:center;color:var(--text-muted);font-size:0.75rem;}
 footer .disclaimer{max-width:720px;margin:0 auto 18px;line-height:1.6;}
 footer img{height:26px;opacity:0.6;margin-bottom:14px;}
 
@@ -318,63 +347,112 @@ footer img{height:26px;opacity:0.6;margin-bottom:14px;}
   </div>
 </div>
 
-<section>
-  <div class="wrap">
-    <div class="section-head">
-      <div class="eyebrow">Modelos de Franquia</div>
-      <h2>Escolha a escala do seu negócio</h2>
-      <p>Cada modelo define o investimento inicial, a abrangência territorial e o percentual de honorários retido pelo franqueado.</p>
-    </div>
-    <div class="models-grid" id="modelsGrid"></div>
+<nav class="tabnav">
+  <div class="wrap tabnav-inner">
+    <button class="tab-btn active" data-tab="modelos"><span class="n">1</span>Modelos de Franquia</button>
+    <button class="tab-btn" data-tab="premissas"><span class="n">2</span>Premissas &amp; Produtos</button>
+    <button class="tab-btn" data-tab="simulador"><span class="n">3</span>Simulador</button>
+    <button class="tab-btn" data-tab="fluxo"><span class="n">4</span>Fluxo de Caixa</button>
+    <button class="tab-btn" data-tab="dre"><span class="n">5</span>DRE Financeiro</button>
   </div>
-</section>
+</nav>
 
-<section class="alt">
-  <div class="wrap">
-    <div class="section-head">
-      <div class="eyebrow">Portfólio de Produtos</div>
-      <h2>Ticket médio de honorários por produto</h2>
-      <p>Valor médio de honorário gerado por contrato fechado, antes da aplicação do percentual do franqueado.</p>
-    </div>
-    <div class="products-cols" id="productsCols"></div>
-  </div>
-</section>
-
-<section>
-  <div class="wrap">
-    <div class="section-head">
-      <div class="eyebrow">Simulador Financeiro</div>
-      <h2>Projete o resultado da sua unidade</h2>
-      <p>Escolha o modelo de franquia e informe quantos contratos por produto pretende fechar no ano 1. Os resultados são recalculados em tempo real.</p>
-    </div>
-
-    <div class="sim-layout">
-      <div class="panel">
-        <div class="franqueado-field">
-          <label for="franqueadoNome">Nome do franqueado / unidade</label>
-          <input type="text" id="franqueadoNome" placeholder="Ex.: João Silva — Studio Fiscal Campinas">
-        </div>
-        <div class="model-pills" id="modelPills"></div>
-        <div id="fieldGroups"></div>
-        <button class="reset-btn" id="resetBtn">Zerar simulação</button>
-        <button class="export-btn" id="exportBtn">Exportar PDF para assinatura</button>
+<div id="tab-modelos" class="tab-panel active">
+  <section>
+    <div class="wrap">
+      <div class="section-head">
+        <div class="eyebrow">Modelos de Franquia</div>
+        <h2>Escolha a escala do seu negócio</h2>
+        <p>Cada modelo define o investimento inicial, a abrangência territorial e o percentual de honorários retido pelo franqueado.</p>
       </div>
+      <div class="models-grid" id="modelsGrid"></div>
+    </div>
+  </section>
+</div>
 
-      <div>
-        <div class="stat-grid" id="statGrid"></div>
-        <div class="chart-box">
-          <h5>Fluxo de caixa acumulado — Ano 1</h5>
-          <div id="chartHost"></div>
-        </div>
-        <div class="dre-box">
-          <h5>DRE Financeiro — Ano 1</h5>
-          <p class="dre-sub">Honorários (regime de competência), Faturamento (regime de caixa, por parcela), despesas e fluxo de caixa mês a mês.</p>
-          <div class="dre-scroll" id="dreTable"></div>
-        </div>
+<div id="tab-premissas" class="tab-panel">
+  <section>
+    <div class="wrap">
+      <div class="section-head">
+        <div class="eyebrow">Premissas &amp; Produtos</div>
+        <h2>Ticket médio, taxa de aprovação e prazos por produto</h2>
+        <p>Mesmas premissas da aba "Premissas / Operação" da planilha — base de cálculo de todo o simulador.</p>
+      </div>
+      <div class="data-box">
+        <div class="premissas-scroll" id="premissasTable"></div>
       </div>
     </div>
-  </div>
-</section>
+  </section>
+</div>
+
+<div id="tab-simulador" class="tab-panel">
+  <section>
+    <div class="wrap">
+      <div class="section-head">
+        <div class="eyebrow">Simulador Financeiro</div>
+        <h2>Projete o resultado da sua unidade</h2>
+        <p>Escolha o modelo de franquia e informe quantos contratos por produto pretende fechar no ano 1. Os resultados são recalculados em tempo real.</p>
+      </div>
+
+      <div class="sim-layout">
+        <div class="panel">
+          <div class="edit-hint"><span class="ic">✎</span> Preencha aqui os dados do lead</div>
+          <div class="franqueado-field">
+            <label for="franqueadoNome">Nome do franqueado / unidade</label>
+            <input type="text" id="franqueadoNome" placeholder="Ex.: João Silva — Studio Fiscal Campinas">
+          </div>
+          <div class="model-pills" id="modelPills"></div>
+          <div id="fieldGroups"></div>
+          <button class="reset-btn" id="resetBtn">Zerar simulação</button>
+          <button class="export-btn" id="exportBtn">Exportar PDF para assinatura</button>
+        </div>
+
+        <div>
+          <div class="live-hint"><span class="dot"></span> Os resultados abaixo mudam automaticamente conforme você preenche os contratos ao lado</div>
+          <div class="stat-grid" id="statGrid"></div>
+          <div class="chart-box">
+            <h5>Fluxo de caixa acumulado — Ano 1</h5>
+            <div id="chartHost"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+</div>
+
+<div id="tab-fluxo" class="tab-panel">
+  <section>
+    <div class="wrap">
+      <div class="section-head">
+        <div class="eyebrow">Fluxo de Caixa</div>
+        <h2>Entradas, saídas e caixa acumulado — mês a mês</h2>
+        <p>Reflete o modelo e os contratos informados na aba Simulador.</p>
+      </div>
+      <div class="data-box" style="margin-bottom:20px;">
+        <h5>Fluxo de caixa acumulado — Ano 1</h5>
+        <div id="chartHostFluxo"></div>
+      </div>
+      <div class="data-box">
+        <div class="dre-scroll" id="fluxoTable"></div>
+      </div>
+    </div>
+  </section>
+</div>
+
+<div id="tab-dre" class="tab-panel">
+  <section>
+    <div class="wrap">
+      <div class="section-head">
+        <div class="eyebrow">DRE Financeiro</div>
+        <h2>Demonstrativo de resultado — mês a mês</h2>
+        <p>Honorários (regime de competência), Faturamento (regime de caixa, por parcela), despesas por categoria e fluxo de caixa acumulado.</p>
+      </div>
+      <div class="data-box">
+        <div class="dre-scroll" id="dreTable"></div>
+      </div>
+    </div>
+  </section>
+</div>
 
 <footer>
   <div class="wrap">
