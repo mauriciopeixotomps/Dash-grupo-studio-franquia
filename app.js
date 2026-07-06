@@ -594,6 +594,12 @@ function update() {
   renderFluxoTable(r);
   const finPlaceholder = document.getElementById('finValorVenda');
   if (finPlaceholder) finPlaceholder.placeholder = brl(model.aquisicao);
+  const finParcelaValor = document.getElementById('finParcelaValor');
+  if (finParcelaValor) {
+    finParcelaValor.textContent = r.parcelasFin > 0
+      ? `Valor da parcela: ${brl(r.installmentFin)} (${r.parcelasFin}x)`
+      : `Sem parcelamento — ${brl(r.valorVenda)} à vista`;
+  }
 }
 
 document.getElementById('resetBtn').addEventListener('click', () => {
