@@ -214,10 +214,15 @@ table.premissas-table td .tkm-val{position:relative;z-index:1;font-weight:700;co
   font-family:-apple-system,Roboto,sans-serif;
 }
 .model-pill.active{background:var(--bronze);color:var(--branco);border-color:var(--bronze);font-weight:700;}
-.field-group h5{
+.panel h5{
   font-size:0.72rem;text-transform:uppercase;letter-spacing:1px;color:var(--bronze);
   margin:18px 0 8px;
 }
+.financing-box{
+  border:1px solid var(--border);border-radius:10px;padding:4px 14px 12px;margin-bottom:6px;background:var(--surface-alt);
+}
+.financing-box h5{margin-top:10px;}
+.financing-hint{font-size:0.7rem;color:var(--text-muted);margin:6px 0 0;}
 .field-row{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:6px 0;}
 .field-row label{font-size:0.8rem;color:var(--text);}
 .field-row input{
@@ -408,6 +413,28 @@ footer img{height:26px;opacity:0.6;margin-bottom:14px;}
             <input type="text" id="franqueadoNome" placeholder="Ex.: João Silva — Studio Fiscal Campinas">
           </div>
           <div class="model-pills" id="modelPills"></div>
+
+          <div class="financing-box">
+            <h5>Financiamento da aquisição da franquia</h5>
+            <div class="field-row">
+              <label for="finValorVenda">Valor da venda (R$)</label>
+              <input type="number" id="finValorVenda" min="0" placeholder="0">
+            </div>
+            <div class="field-row">
+              <label for="finEntrada">Entrada (R$)</label>
+              <input type="number" id="finEntrada" min="0" value="0">
+            </div>
+            <div class="field-row">
+              <label for="finParcelas">Parcelas (nº meses)</label>
+              <input type="number" id="finParcelas" min="0" value="0">
+            </div>
+            <div class="field-row">
+              <label for="finJuros">Juros mensal (%)</label>
+              <input type="number" id="finJuros" min="0" step="0.1" value="0">
+            </div>
+            <p class="financing-hint">Deixe zerado para considerar o valor de aquisição do modelo pago à vista.</p>
+          </div>
+
           <div id="fieldGroups"></div>
           <button class="reset-btn" id="resetBtn">Zerar simulação</button>
           <button class="export-btn" id="exportBtn">Exportar PDF para assinatura</button>
@@ -419,6 +446,7 @@ footer img{height:26px;opacity:0.6;margin-bottom:14px;}
           <div class="chart-box">
             <h5 id="chartTitle">Fluxo de caixa acumulado</h5>
             <div id="chartHost"></div>
+            <div class="chart-legend" id="chartLegendHost"></div>
           </div>
         </div>
       </div>

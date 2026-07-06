@@ -90,6 +90,26 @@ let selectedModelId = 'TAX';
 const inputs = {};
 PRODUCTS.forEach(p => inputs[p.id] = 0);
 
+// valorVenda: preço negociado da franquia (0 = usa o valor de aquisição do modelo selecionado)
+// entrada/parcelas/juros: condições de pagamento dessa aquisição (0 parcelas = pagamento à vista)
+const financing = { valorVenda: 0, entrada: 0, parcelas: 0, juros: 0 };
+function bindFinancingInputs() {
+  const ids = { valorVenda: 'finValorVenda', entrada: 'finEntrada', parcelas: 'finParcelas', juros: 'finJuros' };
+  Object.entries(ids).forEach(([key, id]) => {
+    document.getElementById(id).addEventListener('input', e => {
+      financing[key] = Math.max(0, Number(e.target.value) || 0);
+      update();
+    });
+  });
+}
+function resetFinancingInputs() {
+  financing.valorVenda = 0; financing.entrada = 0; financing.parcelas = 0; financing.juros = 0;
+  document.getElementById('finValorVenda').value = '';
+  document.getElementById('finEntrada').value = '0';
+  document.getElementById('finParcelas').value = '0';
+  document.getElementById('finJuros').value = '0';
+}
+
 function renderModelPills() {
   const host = document.getElementById('modelPills');
   host.innerHTML = '';
@@ -160,6 +180,27 @@ function simulate(model) {
   const despesasComerciaisMensal = (totalContratosAno * REUNIOES_POR_CONTRATO * CUSTO_POR_REUNIAO) / 12;
   const funcionariosMensal = model.equipeDedicada ? CUSTO_FUNCIONARIO_MENSAL : 0;
 
+  // Financiamento da aquisição da franquia (valor da venda, entrada, parcelas e juros mensal
+  // informados pelo usuário na aba Simulador) — se não preenchido, cai no padrão: valor de
+  // aquisição do modelo pago à vista no fechamento (mês 0), igual ao comportamento anterior.
+  const valorVenda = financing.valorVenda > 0 ? financing.valorVenda : model.aquisicao;
+  const parcelasFin = Math.min(months - 1, Math.max(0, Math.round(financing.parcelas || 0)));
+  const jurosFin = Math.max(0, financing.juros || 0) / 100;
+  const financiamento = zeros();
+  let entradaFin, installmentFin;
+  if (parcelasFin > 0) {
+    entradaFin = Math.min(Math.max(0, financing.entrada || 0), valorVenda);
+    const pv = valorVenda - entradaFin;
+    installmentFin = jurosFin > 0 ? pv * jurosFin / (1 - Math.pow(1 + jurosFin, -parcelasFin)) : pv / parcelasFin;
+    financiamento[0] += -entradaFin;
+    for (let k = 0; k < parcelasFin; k++) financiamento[k + 1] += -installmentFin;
+  } else {
+    entradaFin = valorVenda;
+    installmentFin = 0;
+    financiamento[0] += -valorVenda;
+  }
+  const custoTotalAquisicao = entradaFin + installmentFin * parcelasFin;
+
   const impostos = zeros(), royalties = zeros(), crm = zeros(), comercial = zeros();
   const funcionarios = zeros(), midia = zeros(), treinamento = zeros(), contabilidade = zeros();
   const monthlyExpense = zeros(), monthlyProfit = zeros(), cashFlow = zeros();
@@ -174,9 +215,9 @@ function simulate(model) {
     treinamento[m] = m === 0 ? -model.treinamento : 0;
     contabilidade[m] = -CUSTO_CONTABILIDADE_MENSAL;
 
-    monthlyExpense[m] = impostos[m] + royalties[m] + crm[m] + comercial[m] + funcionarios[m] + midia[m] + treinamento[m] + contabilidade[m];
+    monthlyExpense[m] = impostos[m] + royalties[m] + crm[m] + comercial[m] + funcionarios[m] + midia[m] + treinamento[m] + contabilidade[m] + financiamento[m];
     monthlyProfit[m] = monthlyRevenue[m] + monthlyExpense[m];
-    cashFlow[m] = (m === 0 ? -model.aquisicao : cashFlow[m - 1]) + monthlyProfit[m];
+    cashFlow[m] = (m === 0 ? 0 : cashFlow[m - 1]) + monthlyProfit[m];
   }
 
   const sum = a => a.reduce((x, y) => x + y, 0);
@@ -185,9 +226,9 @@ function simulate(model) {
   const lucroAno1 = faturamentoAno1 + despesasAno1;
 
   const faturamentoTotal = sum(monthlyRevenue);
-  const despesasTotal = sum(monthlyExpense) - model.aquisicao;
+  const despesasTotal = sum(monthlyExpense);
   const lucroFinal = faturamentoTotal + despesasTotal;
-  const roi = model.aquisicao > 0 ? lucroFinal / model.aquisicao : 0;
+  const roi = custoTotalAquisicao > 0 ? lucroFinal / custoTotalAquisicao : 0;
   const lucratividade = faturamentoAno1 > 0 ? lucroAno1 / faturamentoAno1 : 0;
 
   const capitalGiro = monthlyProfit.filter(v => v < 0).reduce((a, b) => a + b, 0);
@@ -206,19 +247,24 @@ function simulate(model) {
   return {
     honorariosTax, honorariosCorp, honorariosTotal,
     faturamentoTax, faturamentoCorp, monthlyRevenue,
-    impostos, royalties, crm, comercial, funcionarios, midia, treinamento, contabilidade,
+    impostos, royalties, crm, comercial, funcionarios, midia, treinamento, contabilidade, financiamento,
     monthlyExpense, monthlyProfit, cashFlow,
     faturamentoAno1, despesasAno1, lucroAno1, lucroFinal, roi, lucratividade,
     capitalGiro, breakEvenMonth, paybackMonth,
-    investimentoInicial: model.aquisicao + model.treinamento,
+    valorVenda, entradaFin, parcelasFin, installmentFin, jurosFin, custoTotalAquisicao,
+    investimentoInicial: entradaFin + model.treinamento,
     anos: model.anos,
   };
 }
 
 // ---------- Render: Stats ----------
 function statCardsData(model, r) {
+  const financiamentoDesc = r.parcelasFin > 0
+    ? `Entrada ${brl(r.entradaFin)} + ${r.parcelasFin}x ${brl(r.installmentFin)}${r.jurosFin > 0 ? ` (juros de ${(r.jurosFin * 100).toFixed(1)}% a.m.)` : ''} — custo total ${brl(r.custoTotalAquisicao)}`
+    : `${brl(r.valorVenda)} pago à vista no fechamento`;
   return [
     ['Investimento inicial', brl(-r.investimentoInicial), 'neu', 'Taxa de aquisição + treinamento'],
+    ['Aquisição da franquia', brl(-r.custoTotalAquisicao), 'neu', financiamentoDesc],
     ['Faturamento Ano 1', brl(r.faturamentoAno1), 'pos', 'Honorários recebidos (base caixa)'],
     ['Despesas Ano 1', brl(r.despesasAno1), 'neg', 'Royalties, CRM, impostos, comercial'],
     ['Lucro Ano 1', brl(r.lucroAno1), r.lucroAno1 >= 0 ? 'pos' : 'neg', 'Faturamento − despesas'],
@@ -281,104 +327,61 @@ function periodoLabel(n) {
   return n <= 12 ? '— Ano 1' : `— Ano 1 a Ano ${Math.round(n / 12)}`;
 }
 
-function renderChart(r, hostId) {
-  const host = document.getElementById(hostId || 'chartHost');
-  const gradId = 'grad-' + (hostId || 'chartHost');
-  const W = 900, H = 300, padL = 70, padR = 20, padT = 20, padB = 34;
-  const values = r.cashFlow;
-  const min = Math.min(0, ...values);
-  const max = Math.max(0, ...values);
-  const range = (max - min) || 1;
-  const x = i => padL + (i / (values.length - 1)) * (W - padL - padR);
-  const y = v => padT + (1 - (v - min) / range) * (H - padT - padB);
+// ---------- Render: Fluxo de Caixa chart (Receita/Despesa/Lucro em eixo próprio + Caixa acumulado em eixo próprio) ----------
+// Eixo duplo: os fluxos mensais (receita/despesa/lucro) e o caixa acumulado têm ordens de grandeza muito diferentes
+// (o acumulado composto ao longo do contrato pode ser 10-20x maior que o fluxo de um único mês) — usar a mesma escala
+// linear para os dois faz a despesa/receita mensal "sumir" perto de zero. Cada série usa sua própria escala vertical,
+// alinhadas ao mesmo retângulo de plotagem, com o eixo esquerdo (cinza) para os fluxos e o direito (bronze) p/ o acumulado.
+const COR_RECEITA = '#175FAE', COR_DESPESA = '#C1531E', COR_LUCRO = '#111111', COR_ACUMULADO = '#6E4A1F';
 
-  const zeroY = y(0);
-  const points = values.map((v, i) => `${x(i)},${y(v)}`).join(' ');
-
-  let breakEvenMarker = '';
-  if (r.breakEvenMonth) {
-    const idx = r.breakEvenMonth - 1;
-    breakEvenMarker = `<circle cx="${x(idx)}" cy="${y(values[idx])}" r="5" fill="#927245" stroke="#FDFDFD" stroke-width="2"/>`;
-  }
-
-  let gridLines = yearDividersSvg(values.length, x, padT, padB, H);
-  const labels = monthAxisSvg(values.length, x, H);
-  const yTicks = 4;
-  for (let t = 0; t <= yTicks; t++) {
-    const val = min + (range * t / yTicks);
-    const yy = y(val);
-    gridLines += `<line x1="${padL}" y1="${yy}" x2="${W - padR}" y2="${yy}" stroke="#E1DDD5" stroke-width="1"/>`;
-    gridLines += `<text x="${padL - 10}" y="${yy + 4}" font-size="10" fill="#7A7876" text-anchor="end">${brl(val)}</text>`;
-  }
-
-  const areaPath = `M${x(0)},${zeroY} ` + values.map((v, i) => `L${x(i)},${y(v)}`).join(' ') + ` L${x(values.length - 1)},${zeroY} Z`;
-
-  host.innerHTML = `
-    <svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto;display:block;">
-      ${gridLines}
-      <line x1="${padL}" y1="${zeroY}" x2="${W - padR}" y2="${zeroY}" stroke="#7A7876" stroke-width="1" stroke-dasharray="4 3"/>
-      <path d="${areaPath}" fill="url(#${gradId})" opacity="0.20"/>
-      <defs>
-        <linearGradient id="${gradId}" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stop-color="#927245"/>
-          <stop offset="100%" stop-color="#927245" stop-opacity="0"/>
-        </linearGradient>
-      </defs>
-      <polyline points="${points}" fill="none" stroke="#927245" stroke-width="2.5"/>
-      ${breakEvenMarker}
-      ${labels}
-    </svg>
-  `;
-  const titleEl = document.getElementById('chartTitle');
-  if (titleEl) titleEl.textContent = `Fluxo de caixa acumulado ${periodoLabel(values.length)}`;
-}
-
-// ---------- Render: Fluxo de Caixa detail chart (Receita/Despesa/Lucro/Acumulado + legenda) ----------
-function renderFluxoChart(r, hostId) {
+function renderFlowChart(r, opts) {
+  const { hostId, legendId, titleId, titlePrefix } = opts;
   const host = document.getElementById(hostId);
+  if (!host) return;
   const gradId = 'grad-' + hostId;
-  const W = 900, H = 320, padL = 80, padR = 20, padT = 20, padB = 34;
-  const COR_RECEITA = '#0E8A45', COR_DESPESA = '#C22A2A', COR_LUCRO = '#12100E', COR_ACUMULADO = '#6E4A1F';
+  const W = 900, H = 320, padL = 80, padR = 80, padT = 20, padB = 34;
 
-  const series = {
-    acumulado: r.cashFlow,
-    receita: r.monthlyRevenue,
-    despesa: r.monthlyExpense,
-    lucro: r.monthlyProfit,
-  };
-  const allVals = [].concat(...Object.values(series));
-  const min = Math.min(0, ...allVals);
-  const max = Math.max(0, ...allVals);
-  const range = (max - min) || 1;
-  const n = r.cashFlow.length;
+  const flows = { receita: r.monthlyRevenue, despesa: r.monthlyExpense, lucro: r.monthlyProfit };
+  const acumulado = r.cashFlow;
+  const n = acumulado.length;
+
+  const flowVals = [].concat(flows.receita, flows.despesa, flows.lucro);
+  const minFlow = Math.min(0, ...flowVals), maxFlow = Math.max(0, ...flowVals);
+  const rangeFlow = (maxFlow - minFlow) || 1;
+  const minAcum = Math.min(0, ...acumulado), maxAcum = Math.max(0, ...acumulado);
+  const rangeAcum = (maxAcum - minAcum) || 1;
+
   const x = i => padL + (i / (n - 1)) * (W - padL - padR);
-  const y = v => padT + (1 - (v - min) / range) * (H - padT - padB);
-  const zeroY = y(0);
+  const yFlow = v => padT + (1 - (v - minFlow) / rangeFlow) * (H - padT - padB);
+  const yAcum = v => padT + (1 - (v - minAcum) / rangeAcum) * (H - padT - padB);
+  const zeroYAcum = yAcum(0);
 
-  const line = arr => arr.map((v, i) => `${x(i)},${y(v)}`).join(' ');
-  const areaPath = arr => `M${x(0)},${zeroY} ` + arr.map((v, i) => `L${x(i)},${y(v)}`).join(' ') + ` L${x(n - 1)},${zeroY} Z`;
+  const line = (arr, yFn) => arr.map((v, i) => `${x(i)},${yFn(v)}`).join(' ');
+  const areaPath = (arr, yFn) => `M${x(0)},${zeroYAcum} ` + arr.map((v, i) => `L${x(i)},${yFn(v)}`).join(' ') + ` L${x(n - 1)},${zeroYAcum} Z`;
 
   let gridLines = yearDividersSvg(n, x, padT, padB, H);
   const labels = monthAxisSvg(n, x, H);
   const yTicks = 4;
   for (let t = 0; t <= yTicks; t++) {
-    const val = min + (range * t / yTicks);
-    const yy = y(val);
+    const yy = padT + (t / yTicks) * (H - padT - padB);
+    const valFlow = maxFlow - (rangeFlow * t / yTicks);
+    const valAcum = maxAcum - (rangeAcum * t / yTicks);
     gridLines += `<line x1="${padL}" y1="${yy}" x2="${W - padR}" y2="${yy}" stroke="#E1DDD5" stroke-width="1"/>`;
-    gridLines += `<text x="${padL - 10}" y="${yy + 4}" font-size="10" fill="#7A7876" text-anchor="end">${brl(val)}</text>`;
+    gridLines += `<text x="${padL - 10}" y="${yy + 4}" font-size="10" fill="#7A7876" text-anchor="end">${brl(valFlow)}</text>`;
+    gridLines += `<text x="${W - padR + 10}" y="${yy + 4}" font-size="10" fill="${COR_ACUMULADO}" text-anchor="start">${brl(valAcum)}</text>`;
   }
 
   let breakEvenMarker = '', breakEvenLabel = '';
   if (r.breakEvenMonth) {
     const idx = r.breakEvenMonth - 1;
-    const cx = x(idx), cy = y(series.lucro[idx]);
+    const cx = x(idx), cy = yFlow(r.monthlyProfit[idx]);
     breakEvenMarker = `<circle cx="${cx}" cy="${cy}" r="5" fill="${COR_RECEITA}" stroke="#FDFDFD" stroke-width="2"/>`;
     breakEvenLabel = `<text x="${cx}" y="${cy - 10}" font-size="10" font-weight="700" fill="${COR_RECEITA}" text-anchor="middle">Breakeven</text>`;
   }
   let paybackMarker = '', paybackLabel = '';
   if (r.paybackMonth) {
     const idx = r.paybackMonth - 1;
-    const cx = x(idx), cy = y(series.acumulado[idx]);
+    const cx = x(idx), cy = yAcum(acumulado[idx]);
     paybackMarker = `<circle cx="${cx}" cy="${cy}" r="5" fill="${COR_ACUMULADO}" stroke="#FDFDFD" stroke-width="2"/>`;
     paybackLabel = `<text x="${cx}" y="${cy + 18}" font-size="10" font-weight="700" fill="${COR_ACUMULADO}" text-anchor="middle">Payback</text>`;
   }
@@ -386,33 +389,33 @@ function renderFluxoChart(r, hostId) {
   host.innerHTML = `
     <svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto;display:block;">
       ${gridLines}
-      <line x1="${padL}" y1="${zeroY}" x2="${W - padR}" y2="${zeroY}" stroke="#7A7876" stroke-width="1" stroke-dasharray="4 3"/>
-      <path d="${areaPath(series.acumulado)}" fill="url(#${gradId})" opacity="0.16"/>
+      <line x1="${padL}" y1="${zeroYAcum}" x2="${W - padR}" y2="${zeroYAcum}" stroke="#7A7876" stroke-width="1" stroke-dasharray="4 3"/>
+      <path d="${areaPath(acumulado, yAcum)}" fill="url(#${gradId})" opacity="0.16"/>
       <defs>
         <linearGradient id="${gradId}" x1="0" y1="0" x2="0" y2="1">
           <stop offset="0%" stop-color="${COR_ACUMULADO}"/>
           <stop offset="100%" stop-color="${COR_ACUMULADO}" stop-opacity="0"/>
         </linearGradient>
       </defs>
-      <polyline points="${line(series.receita)}" fill="none" stroke="${COR_RECEITA}" stroke-width="2.5"/>
-      <polyline points="${line(series.despesa)}" fill="none" stroke="${COR_DESPESA}" stroke-width="2.5"/>
-      <polyline points="${line(series.lucro)}" fill="none" stroke="${COR_LUCRO}" stroke-width="2" stroke-dasharray="5 4"/>
-      <polyline points="${line(series.acumulado)}" fill="none" stroke="${COR_ACUMULADO}" stroke-width="3.5"/>
+      <polyline points="${line(flows.receita, yFlow)}" fill="none" stroke="${COR_RECEITA}" stroke-width="2.5"/>
+      <polyline points="${line(flows.despesa, yFlow)}" fill="none" stroke="${COR_DESPESA}" stroke-width="2.5"/>
+      <polyline points="${line(flows.lucro, yFlow)}" fill="none" stroke="${COR_LUCRO}" stroke-width="2" stroke-dasharray="5 4"/>
+      <polyline points="${line(acumulado, yAcum)}" fill="none" stroke="${COR_ACUMULADO}" stroke-width="3.5"/>
       ${breakEvenMarker}${paybackMarker}
       ${breakEvenLabel}${paybackLabel}
       ${labels}
     </svg>
   `;
 
-  const titleElFluxo = document.getElementById('chartTitleFluxo');
-  if (titleElFluxo) titleElFluxo.textContent = `Receita, despesa, lucro e caixa acumulado ${periodoLabel(n)}`;
+  const titleEl = document.getElementById(titleId);
+  if (titleEl) titleEl.textContent = `${titlePrefix} ${periodoLabel(n)}`;
 
-  const legendHost = document.getElementById('chartLegendFluxo');
+  const legendHost = document.getElementById(legendId);
   if (legendHost) {
     legendHost.innerHTML = `
-      <span class="item"><span class="sw" style="border-color:${COR_RECEITA}"></span>Receita</span>
-      <span class="item"><span class="sw" style="border-color:${COR_DESPESA}"></span>Despesa</span>
-      <span class="item"><span class="sw dashed" style="border-color:${COR_LUCRO}"></span>Lucro</span>
+      <span class="item"><span class="sw" style="border-color:${COR_RECEITA}"></span>Receita (mês)</span>
+      <span class="item"><span class="sw" style="border-color:${COR_DESPESA}"></span>Despesa (mês)</span>
+      <span class="item"><span class="sw dashed" style="border-color:${COR_LUCRO}"></span>Lucro (mês)</span>
       <span class="item"><span class="sw" style="border-color:${COR_ACUMULADO};border-top-width:4px;"></span>Caixa acumulado</span>
       <span class="item"><span class="sw dot" style="background:${COR_RECEITA}"></span>Breakeven<b>${r.breakEvenMonth ? `Mês ${r.breakEvenMonth}` : 'não atingido'}</b></span>
       <span class="item"><span class="sw dot" style="background:${COR_ACUMULADO}"></span>Payback<b>${r.paybackMonth ? `Mês ${r.paybackMonth}` : 'não atingido'}</b></span>
@@ -470,6 +473,7 @@ function dreRowsHtml(r) {
   html += dataRow('Mídia', r.midia);
   html += dataRow('Treinamento', r.treinamento);
   html += dataRow('Contabilidade', r.contabilidade);
+  html += dataRow('Aquisição da franquia (entrada + parcelas)', r.financiamento);
   html += dataRow('Total Despesas', r.monthlyExpense, { rowClass: 'total-row' });
 
   html += dataRow('Lucro', r.monthlyProfit, { rowClass: 'hero-row', colorize: true });
@@ -584,15 +588,18 @@ function update() {
   lastResult = r;
   renderHeroStats(model, r);
   renderStats(model, r);
-  renderChart(r, 'chartHost');
-  renderFluxoChart(r, 'chartHostFluxo');
+  renderFlowChart(r, { hostId: 'chartHost', legendId: 'chartLegendHost', titleId: 'chartTitle', titlePrefix: 'Fluxo de caixa acumulado' });
+  renderFlowChart(r, { hostId: 'chartHostFluxo', legendId: 'chartLegendFluxo', titleId: 'chartTitleFluxo', titlePrefix: 'Receita, despesa, lucro e caixa acumulado' });
   renderDRE(r);
   renderFluxoTable(r);
+  const finPlaceholder = document.getElementById('finValorVenda');
+  if (finPlaceholder) finPlaceholder.placeholder = brl(model.aquisicao);
 }
 
 document.getElementById('resetBtn').addEventListener('click', () => {
   PRODUCTS.forEach(p => inputs[p.id] = 0);
   renderFieldGroups();
+  resetFinancingInputs();
   update();
 });
 
@@ -617,5 +624,6 @@ renderModelCards();
 renderPremissas();
 renderModelPills();
 renderFieldGroups();
+bindFinancingInputs();
 initTabs();
 update();
