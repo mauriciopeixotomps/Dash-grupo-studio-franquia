@@ -310,6 +310,7 @@ function renderFluxoChart(r, hostId) {
   const host = document.getElementById(hostId);
   const gradId = 'grad-' + hostId;
   const W = 900, H = 320, padL = 80, padR = 20, padT = 20, padB = 34;
+  const COR_RECEITA = '#0E8A45', COR_DESPESA = '#C22A2A', COR_LUCRO = '#12100E', COR_ACUMULADO = '#6E4A1F';
 
   const series = {
     acumulado: r.cashFlow,
@@ -345,32 +346,32 @@ function renderFluxoChart(r, hostId) {
   if (r.breakEvenMonth) {
     const idx = r.breakEvenMonth - 1;
     const cx = x(idx), cy = y(series.lucro[idx]);
-    breakEvenMarker = `<circle cx="${cx}" cy="${cy}" r="5" fill="#2E7D4F" stroke="#FDFDFD" stroke-width="2"/>`;
-    breakEvenLabel = `<text x="${cx}" y="${cy - 10}" font-size="10" font-weight="700" fill="#2E7D4F" text-anchor="middle">Breakeven</text>`;
+    breakEvenMarker = `<circle cx="${cx}" cy="${cy}" r="5" fill="${COR_RECEITA}" stroke="#FDFDFD" stroke-width="2"/>`;
+    breakEvenLabel = `<text x="${cx}" y="${cy - 10}" font-size="10" font-weight="700" fill="${COR_RECEITA}" text-anchor="middle">Breakeven</text>`;
   }
   let paybackMarker = '', paybackLabel = '';
   if (r.paybackMonth) {
     const idx = r.paybackMonth - 1;
     const cx = x(idx), cy = y(series.acumulado[idx]);
-    paybackMarker = `<circle cx="${cx}" cy="${cy}" r="5" fill="#927245" stroke="#FDFDFD" stroke-width="2"/>`;
-    paybackLabel = `<text x="${cx}" y="${cy + 18}" font-size="10" font-weight="700" fill="#927245" text-anchor="middle">Payback</text>`;
+    paybackMarker = `<circle cx="${cx}" cy="${cy}" r="5" fill="${COR_ACUMULADO}" stroke="#FDFDFD" stroke-width="2"/>`;
+    paybackLabel = `<text x="${cx}" y="${cy + 18}" font-size="10" font-weight="700" fill="${COR_ACUMULADO}" text-anchor="middle">Payback</text>`;
   }
 
   host.innerHTML = `
     <svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto;display:block;">
       ${gridLines}
       <line x1="${padL}" y1="${zeroY}" x2="${W - padR}" y2="${zeroY}" stroke="#7A7876" stroke-width="1" stroke-dasharray="4 3"/>
-      <path d="${areaPath(series.acumulado)}" fill="url(#${gradId})" opacity="0.18"/>
+      <path d="${areaPath(series.acumulado)}" fill="url(#${gradId})" opacity="0.16"/>
       <defs>
         <linearGradient id="${gradId}" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stop-color="#927245"/>
-          <stop offset="100%" stop-color="#927245" stop-opacity="0"/>
+          <stop offset="0%" stop-color="${COR_ACUMULADO}"/>
+          <stop offset="100%" stop-color="${COR_ACUMULADO}" stop-opacity="0"/>
         </linearGradient>
       </defs>
-      <polyline points="${line(series.receita)}" fill="none" stroke="#2E7D4F" stroke-width="2"/>
-      <polyline points="${line(series.despesa)}" fill="none" stroke="#B23B3B" stroke-width="2"/>
-      <polyline points="${line(series.lucro)}" fill="none" stroke="#1F1F1F" stroke-width="1.75" stroke-dasharray="5 4"/>
-      <polyline points="${line(series.acumulado)}" fill="none" stroke="#927245" stroke-width="3"/>
+      <polyline points="${line(series.receita)}" fill="none" stroke="${COR_RECEITA}" stroke-width="2.5"/>
+      <polyline points="${line(series.despesa)}" fill="none" stroke="${COR_DESPESA}" stroke-width="2.5"/>
+      <polyline points="${line(series.lucro)}" fill="none" stroke="${COR_LUCRO}" stroke-width="2" stroke-dasharray="5 4"/>
+      <polyline points="${line(series.acumulado)}" fill="none" stroke="${COR_ACUMULADO}" stroke-width="3.5"/>
       ${breakEvenMarker}${paybackMarker}
       ${breakEvenLabel}${paybackLabel}
       ${labels}
@@ -380,12 +381,12 @@ function renderFluxoChart(r, hostId) {
   const legendHost = document.getElementById('chartLegendFluxo');
   if (legendHost) {
     legendHost.innerHTML = `
-      <span class="item"><span class="sw" style="border-color:#2E7D4F"></span>Receita</span>
-      <span class="item"><span class="sw" style="border-color:#B23B3B"></span>Despesa</span>
-      <span class="item"><span class="sw dashed" style="border-color:#1F1F1F"></span>Lucro</span>
-      <span class="item"><span class="sw" style="border-color:#927245;border-top-width:4px;"></span>Caixa acumulado</span>
-      <span class="item"><span class="sw dot" style="background:#2E7D4F"></span>Breakeven<b>${r.breakEvenMonth ? `Mês ${r.breakEvenMonth}` : 'não atingido'}</b></span>
-      <span class="item"><span class="sw dot" style="background:#927245"></span>Payback<b>${r.paybackMonth ? `Mês ${r.paybackMonth}` : 'não atingido'}</b></span>
+      <span class="item"><span class="sw" style="border-color:${COR_RECEITA}"></span>Receita</span>
+      <span class="item"><span class="sw" style="border-color:${COR_DESPESA}"></span>Despesa</span>
+      <span class="item"><span class="sw dashed" style="border-color:${COR_LUCRO}"></span>Lucro</span>
+      <span class="item"><span class="sw" style="border-color:${COR_ACUMULADO};border-top-width:4px;"></span>Caixa acumulado</span>
+      <span class="item"><span class="sw dot" style="background:${COR_RECEITA}"></span>Breakeven<b>${r.breakEvenMonth ? `Mês ${r.breakEvenMonth}` : 'não atingido'}</b></span>
+      <span class="item"><span class="sw dot" style="background:${COR_ACUMULADO}"></span>Payback<b>${r.paybackMonth ? `Mês ${r.paybackMonth}` : 'não atingido'}</b></span>
     `;
   }
 }
