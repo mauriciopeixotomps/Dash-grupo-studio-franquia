@@ -7,8 +7,8 @@ const MODELS = [
     nome: 'TAX',
     aquisicao: 35000,
     royalties: 1500,
-    crm: 532.11,
-    treinamento: 2350,
+    crm: 536.11,
+    treinamento: 3250,
     anos: 3,
     prazoTexto: '3 anos',
     abrangencia: 'Estadual',
@@ -25,8 +25,8 @@ const MODELS = [
     nome: 'PLATINUM',
     aquisicao: 50000,
     royalties: 1500,
-    crm: 532.11,
-    treinamento: 2350,
+    crm: 536.11,
+    treinamento: 3250,
     anos: 5,
     prazoTexto: '5 anos',
     abrangencia: 'Regional',
@@ -43,8 +43,8 @@ const MODELS = [
     nome: 'CORPORATE',
     aquisicao: 90000,
     royalties: 1500,
-    crm: 532.11,
-    treinamento: 2350,
+    crm: 536.11,
+    treinamento: 3250,
     anos: 10,
     prazoTexto: '10 anos',
     abrangencia: 'Nacional',
@@ -61,8 +61,8 @@ const MODELS = [
     nome: 'GS Partner',
     aquisicao: 120000,
     royalties: 1500,
-    crm: 532.11,
-    treinamento: 2350,
+    crm: 536.11,
+    treinamento: 3250,
     anos: 10,
     prazoTexto: '10 anos',
     abrangencia: 'Nacional',
@@ -80,8 +80,8 @@ const MODELS = [
     nome: 'Flagship',
     aquisicao: 250000,
     royalties: 13333,
-    crm: 532.11,
-    treinamento: 2350,
+    crm: 536.11,
+    treinamento: 3250,
     anos: 10,
     prazoTexto: '10 anos',
     abrangencia: 'Nacional',
@@ -118,7 +118,7 @@ const PRODUCTS = [
 ];
 
 // custo fixo mensal de contabilidade da própria unidade (não confundir com o produto "Contabilidade")
-const CUSTO_CONTABILIDADE_MENSAL = 250;
+const CUSTO_CONTABILIDADE_MENSAL = 350;
 const CUSTO_FUNCIONARIO_MENSAL = 7000;
 const IMPOSTOS_PCT = 0.065;
 const CUSTO_POR_REUNIAO = 40;
