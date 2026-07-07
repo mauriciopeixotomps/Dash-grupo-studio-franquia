@@ -357,12 +357,18 @@ function statCardsData(model, r) {
   const financiamentoDesc = r.parcelasFin > 0
     ? `Entrada ${brl(r.entradaFin)} + ${r.parcelasFin}x ${brl(r.installmentFin)}${r.jurosFin > 0 ? ` (juros de ${(r.jurosFin * 100).toFixed(1)}% a.m.)` : ''} — custo total ${brl(r.custoTotalAquisicao)}`
     : `${brl(r.valorVenda)} pago à vista no fechamento`;
+  // Card resumido: só os custos fixos e previsíveis da operação (royalties/taxa de franquia + CRM +
+  // contabilidade). Impostos, comercial, funcionários, mídia, financiamento e despesas adicionais
+  // variam por cenário e aparecem detalhados na aba DRE Financeiro — sem isso o card ficava alto
+  // e difícil de interpretar. O "Lucro Ano 1" continua líquido de TODOS os custos reais.
+  const sum12 = arr => arr.slice(0, 12).reduce((a, b) => a + b, 0);
+  const custosFixosAno1 = sum12(r.royalties) + sum12(r.crm) + sum12(r.contabilidade);
   return [
     ['Investimento inicial', brl(-r.investimentoInicial), 'neu', 'Taxa de aquisição + treinamento'],
     ['Aquisição da franquia', brl(-r.custoTotalAquisicao), 'neu', financiamentoDesc],
     ['Faturamento Ano 1', brl(r.faturamentoAno1), 'pos', 'Honorários recebidos (base caixa)'],
-    ['Despesas Ano 1', brl(r.despesasAno1), 'neg', 'Royalties, CRM, impostos, comercial'],
-    ['Lucro Ano 1', brl(r.lucroAno1), r.lucroAno1 >= 0 ? 'pos' : 'neg', 'Faturamento − despesas'],
+    ['Custos fixos Ano 1', brl(custosFixosAno1), 'neg', 'Royalties (taxa de franquia), CRM e contabilidade — demais custos no DRE'],
+    ['Lucro Ano 1', brl(r.lucroAno1), r.lucroAno1 >= 0 ? 'pos' : 'neg', 'Faturamento − todos os custos reais'],
     ['Capital de giro necessário', brl(r.capitalGiro), 'neg', 'Soma dos meses deficitários'],
     ['Breakeven', r.breakEvenMonth ? `Mês ${r.breakEvenMonth}` : `Não atingido em ${model.anos} anos`, r.breakEvenMonth ? 'pos' : 'neg', 'Lucro mensal fica positivo'],
     ['Payback', r.paybackMonth ? `Mês ${r.paybackMonth}` : `Sem payback em ${model.anos} anos`, r.paybackMonth ? 'pos' : 'neg', 'Caixa acumulado recupera o investimento'],
