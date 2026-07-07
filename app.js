@@ -325,7 +325,13 @@ function simulate(model) {
   const roi = custoTotalAquisicao > 0 ? lucroFinal / custoTotalAquisicao : 0;
   const lucratividade = faturamentoAno1 > 0 ? lucroAno1 / faturamentoAno1 : 0;
 
-  const capitalGiro = monthlyProfit.filter(v => v < 0).reduce((a, b) => a + b, 0);
+  // Capital de giro: reserva para cobrir só os custos recorrentes devidos ao Grupo Studio
+  // (royalties + CRM + contabilidade — os mesmos "custos fixos" do card acima) durante os meses
+  // em que a unidade opera no vermelho. Não inclui aquisição/financiamento (já aparece em cards
+  // próprios) nem custos variáveis (comercial, funcionários, mídia, despesas adicionais).
+  const custosFixosMensal = model.royalties + model.crm + CUSTO_CONTABILIDADE_MENSAL;
+  const mesesDeficitarios = monthlyProfit.filter(v => v < 0).length;
+  const capitalGiro = -custosFixosMensal * mesesDeficitarios;
 
   // Breakeven: 1º mês em que o LUCRO mensal (operacional) fica positivo
   let breakEvenMonth = null;
@@ -370,7 +376,7 @@ function statCardsData(model, r) {
     ['Faturamento médio mensal', brl(r.faturamentoAno1 / 12), 'pos', 'Faturamento Ano 1 ÷ 12'],
     ['Custos fixos Ano 1', brl(custosFixosAno1), 'neg', 'Royalties (taxa de franquia), CRM e contabilidade — demais custos no DRE'],
     ['Lucro Ano 1', brl(r.lucroAno1), r.lucroAno1 >= 0 ? 'pos' : 'neg', 'Faturamento − todos os custos reais'],
-    ['Capital de giro necessário', brl(r.capitalGiro), 'neg', 'Soma dos meses deficitários'],
+    ['Capital de giro necessário', brl(r.capitalGiro), 'neg', 'Royalties + CRM + contabilidade nos meses no vermelho'],
     ['Breakeven', r.breakEvenMonth ? `Mês ${r.breakEvenMonth}` : `Não atingido em ${model.anos} anos`, r.breakEvenMonth ? 'pos' : 'neg', 'Lucro mensal fica positivo'],
     ['Payback', r.paybackMonth ? `Mês ${r.paybackMonth}` : `Sem payback em ${model.anos} anos`, r.paybackMonth ? 'pos' : 'neg', 'Caixa acumulado recupera o investimento'],
     ['ROI', `${r.roi.toFixed(1)}x`, r.roi >= 0 ? 'pos' : 'neg', `Sobre o contrato de ${model.anos} anos`],
