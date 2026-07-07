@@ -367,6 +367,7 @@ function statCardsData(model, r) {
     ['Investimento inicial', brl(-r.investimentoInicial), 'neu', 'Taxa de aquisição + treinamento'],
     ['Aquisição da franquia', brl(-r.custoTotalAquisicao), 'neu', financiamentoDesc],
     ['Faturamento Ano 1', brl(r.faturamentoAno1), 'pos', 'Honorários recebidos (base caixa)'],
+    ['Faturamento médio mensal', brl(r.faturamentoAno1 / 12), 'pos', 'Faturamento Ano 1 ÷ 12'],
     ['Custos fixos Ano 1', brl(custosFixosAno1), 'neg', 'Royalties (taxa de franquia), CRM e contabilidade — demais custos no DRE'],
     ['Lucro Ano 1', brl(r.lucroAno1), r.lucroAno1 >= 0 ? 'pos' : 'neg', 'Faturamento − todos os custos reais'],
     ['Capital de giro necessário', brl(r.capitalGiro), 'neg', 'Soma dos meses deficitários'],
