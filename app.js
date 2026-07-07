@@ -757,7 +757,7 @@ function update() {
   }
   const assSugestao = document.getElementById('assSugestao');
   if (assSugestao) {
-    assSugestao.textContent = `Sugestão: ${Math.round(r.contratosSugeridos)} contratos/ano (${Math.round(r.reunioesNecessarias)} reuniões necessárias)`;
+    assSugestao.textContent = `Projeção: ${Math.round(r.contratosSugeridos)} contratos/ano (${Math.round(r.reunioesNecessarias)} reuniões necessárias)`;
   }
 }
 
