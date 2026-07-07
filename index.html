@@ -221,7 +221,10 @@ table.premissas-table td .tkm-val{position:relative;z-index:1;font-weight:700;co
 .financing-box{
   border:1px solid var(--border);border-radius:10px;padding:4px 14px 12px;margin-bottom:6px;background:var(--surface-alt);
 }
-.financing-box h5{margin-top:10px;}
+.financing-box h5, .assessment-box h5, .custom-expenses-box h5{margin-top:10px;}
+.assessment-box, .custom-expenses-box{
+  border:1px solid var(--border);border-radius:10px;padding:4px 14px 12px;margin-bottom:6px;background:var(--surface-alt);
+}
 .financing-hint{font-size:0.7rem;color:var(--text-muted);margin:6px 0 0;}
 .financing-result{
   font-size:0.82rem;font-weight:700;color:var(--bronze);background:var(--surface);
@@ -229,7 +232,7 @@ table.premissas-table td .tkm-val{position:relative;z-index:1;font-weight:700;co
 }
 .field-row{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:6px 0;}
 .field-row label{font-size:0.8rem;color:var(--text);}
-.field-row input{
+.field-row input, .field-row select{
   width:76px;
   background:var(--branco);
   border:1.5px solid var(--cinza-neutro);
@@ -240,8 +243,32 @@ table.premissas-table td .tkm-val{position:relative;z-index:1;font-weight:700;co
   font-size:0.85rem;
   font-weight:600;
 }
-.field-row input:hover{border-color:var(--bronze);}
-.field-row input:focus{outline:none;border-color:var(--duna);box-shadow:0 0 0 3px rgba(213,174,119,0.25);}
+.field-row select{width:auto;text-align:left;}
+.field-row input:hover, .field-row select:hover{border-color:var(--bronze);}
+.field-row input:focus, .field-row select:focus{outline:none;border-color:var(--duna);box-shadow:0 0 0 3px rgba(213,174,119,0.25);}
+.expense-row{display:flex;align-items:center;gap:6px;padding:6px 0;}
+.expense-row .expense-nome{
+  flex:1;min-width:0;background:var(--branco);border:1.5px solid var(--cinza-neutro);color:var(--text);
+  border-radius:6px;padding:7px 8px;font-size:0.82rem;
+}
+.expense-row .expense-valor, .expense-row .expense-mes{
+  width:88px;background:var(--branco);border:1.5px solid var(--cinza-neutro);color:var(--text);
+  border-radius:6px;padding:7px 8px;text-align:right;font-size:0.82rem;font-weight:600;
+}
+.expense-row .expense-nome:hover, .expense-row .expense-valor:hover, .expense-row .expense-mes:hover{border-color:var(--bronze);}
+.expense-row .expense-nome:focus, .expense-row .expense-valor:focus, .expense-row .expense-mes:focus{
+  outline:none;border-color:var(--duna);box-shadow:0 0 0 3px rgba(213,174,119,0.25);
+}
+.expense-row .expense-remove{
+  width:26px;height:26px;flex:none;border-radius:50%;border:1px solid var(--border);background:var(--surface);
+  color:var(--red);cursor:pointer;font-size:0.9rem;line-height:1;
+}
+.expense-row .expense-remove:hover{background:var(--red);color:var(--branco);border-color:var(--red);}
+.add-expense-btn{
+  margin-top:6px;width:100%;padding:8px;border-radius:8px;border:1px dashed var(--bronze);
+  background:transparent;color:var(--bronze);cursor:pointer;font-size:0.78rem;font-weight:600;
+}
+.add-expense-btn:hover{background:var(--surface);}
 .reset-btn{
   margin-top:18px;width:100%;padding:10px;border-radius:8px;border:1px solid var(--border);
   background:var(--surface);color:var(--text-muted);cursor:pointer;font-size:0.78rem;
@@ -430,6 +457,28 @@ footer img{height:26px;opacity:0.6;margin-bottom:14px;}
           </div>
           <div class="model-pills" id="modelPills"></div>
 
+          <div class="assessment-box">
+            <h5>Assessment</h5>
+            <div class="field-row">
+              <label for="assHoras">Horas semanais dedicadas</label>
+              <input type="number" id="assHoras" min="0" value="0">
+            </div>
+            <div class="field-row">
+              <label for="assParceria">Possui parceria com entidades de classe/associações?</label>
+              <select id="assParceria"><option value="nao">Não</option><option value="sim">Sim</option></select>
+            </div>
+            <div class="field-row">
+              <label for="assVendedor">Terá vendedor focado na franquia?</label>
+              <select id="assVendedor"><option value="nao">Não</option><option value="sim">Sim</option></select>
+            </div>
+            <div class="field-row">
+              <label for="assCarteira">Possui carteira de clientes com o perfil do grupo?</label>
+              <select id="assCarteira"><option value="nao">Não</option><option value="sim">Sim</option></select>
+            </div>
+            <div class="financing-result" id="assSugestao"></div>
+            <p class="financing-hint">Sugestão de contratos/ano com base no assessment — não altera os contratos preenchidos abaixo. "Vendedor focado" também soma um custo de equipe no fluxo de caixa.</p>
+          </div>
+
           <div class="financing-box">
             <h5>Financiamento da aquisição da franquia</h5>
             <div class="field-row">
@@ -450,6 +499,13 @@ footer img{height:26px;opacity:0.6;margin-bottom:14px;}
             </div>
             <div class="financing-result" id="finParcelaValor"></div>
             <p class="financing-hint">Deixe zerado para considerar o valor de aquisição do modelo pago à vista.</p>
+          </div>
+
+          <div class="custom-expenses-box">
+            <h5>Despesas adicionais</h5>
+            <div id="customExpensesList"></div>
+            <button type="button" class="add-expense-btn" id="addExpenseBtn">+ Adicionar despesa</button>
+            <p class="financing-hint">Custos recorrentes que você espera ter (funcionário, parceria, combustível etc.) — somam no fluxo de caixa a partir do mês informado.</p>
           </div>
 
           <div id="fieldGroups"></div>

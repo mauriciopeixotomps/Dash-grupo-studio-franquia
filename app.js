@@ -110,6 +110,77 @@ function resetFinancingInputs() {
   document.getElementById('finJuros').value = '0';
 }
 
+// Assessment (aba Simulador da planilha original): respostas qualitativas que alimentam uma
+// sugestão de contratos/ano (fórmula G9) e, no caso de "vendedor focado", um custo real de
+// equipe (DRE Financeiro!B17 = IF(C21="SIM",7000,0)) — verificado direto na planilha-fonte.
+const assessment = { horas: 0, parceria: false, vendedor: false, carteira: false };
+function bindAssessmentInputs() {
+  document.getElementById('assHoras').addEventListener('input', e => {
+    assessment.horas = Math.max(0, Number(e.target.value) || 0);
+    update();
+  });
+  const boolIds = { parceria: 'assParceria', vendedor: 'assVendedor', carteira: 'assCarteira' };
+  Object.entries(boolIds).forEach(([key, id]) => {
+    document.getElementById(id).addEventListener('change', e => {
+      assessment[key] = e.target.value === 'sim';
+      update();
+    });
+  });
+}
+function resetAssessmentInputs() {
+  assessment.horas = 0; assessment.parceria = false; assessment.vendedor = false; assessment.carteira = false;
+  document.getElementById('assHoras').value = '0';
+  document.getElementById('assParceria').value = 'nao';
+  document.getElementById('assVendedor').value = 'nao';
+  document.getElementById('assCarteira').value = 'nao';
+}
+
+// Despesas adicionais: custos mensais recorrentes definidos livremente pelo usuário
+// (ex.: funcionário, parceria, combustível), somados ao fluxo de caixa a partir do mês informado.
+let customExpenses = [];
+let customExpenseSeq = 0;
+function addCustomExpense() {
+  customExpenses.push({ id: ++customExpenseSeq, nome: '', valor: 0, mesInicio: 1 });
+  renderCustomExpenses();
+  update();
+}
+function removeCustomExpense(id) {
+  customExpenses = customExpenses.filter(e => e.id !== id);
+  renderCustomExpenses();
+  update();
+}
+function renderCustomExpenses() {
+  const host = document.getElementById('customExpensesList');
+  host.innerHTML = '';
+  customExpenses.forEach(exp => {
+    const row = el('div', 'expense-row');
+    row.dataset.id = exp.id;
+
+    const nome = document.createElement('input');
+    nome.type = 'text'; nome.className = 'expense-nome'; nome.placeholder = 'Nome da despesa'; nome.value = exp.nome;
+    nome.addEventListener('input', () => { exp.nome = nome.value; update(); });
+
+    const valor = document.createElement('input');
+    valor.type = 'number'; valor.className = 'expense-valor'; valor.min = '0'; valor.placeholder = 'R$/mês'; valor.value = exp.valor || '';
+    valor.addEventListener('input', () => { exp.valor = Math.max(0, Number(valor.value) || 0); update(); });
+
+    const mes = document.createElement('input');
+    mes.type = 'number'; mes.className = 'expense-mes'; mes.min = '1'; mes.title = 'Mês de início'; mes.value = exp.mesInicio;
+    mes.addEventListener('input', () => { exp.mesInicio = Math.max(1, Math.round(Number(mes.value) || 1)); update(); });
+
+    const remove = document.createElement('button');
+    remove.type = 'button'; remove.className = 'expense-remove'; remove.textContent = '×'; remove.title = 'Remover';
+    remove.addEventListener('click', () => removeCustomExpense(exp.id));
+
+    row.appendChild(nome); row.appendChild(valor); row.appendChild(mes); row.appendChild(remove);
+    host.appendChild(row);
+  });
+}
+function resetCustomExpenses() {
+  customExpenses = [];
+  renderCustomExpenses();
+}
+
 function renderModelPills() {
   const host = document.getElementById('modelPills');
   host.innerHTML = '';
@@ -178,7 +249,20 @@ function simulate(model) {
 
   const totalContratosAno = Object.values(inputs).reduce((a, b) => a + b, 0);
   const despesasComerciaisMensal = (totalContratosAno * REUNIOES_POR_CONTRATO * CUSTO_POR_REUNIAO) / 12;
-  const funcionariosMensal = model.equipeDedicada ? CUSTO_FUNCIONARIO_MENSAL : 0;
+  // "Vendedor focado" (assessment) é o driver real do custo de equipe na planilha-fonte
+  // (DRE Financeiro!B17 = IF(Simulador!C21="SIM",7000,0)), não o modelo escolhido.
+  const funcionariosMensal = assessment.vendedor ? CUSTO_FUNCIONARIO_MENSAL : 0;
+
+  // Sugestão de contratos/ano com base no assessment (Simulador!G9 da planilha-fonte) — puramente
+  // informativa, não altera os contratos projetados preenchidos manualmente abaixo.
+  const scoreAssessment = (assessment.horas >= 8 ? 1 : 0.5)
+    + (assessment.parceria ? 0.5 : 0)
+    + (assessment.vendedor ? 1 : 0)
+    + (assessment.carteira ? 0.5 : 0)
+    + (model.id === 'GS_PARTNER' ? 2 : 0)
+    + (model.id === 'FLAGSHIP' ? 5 : 0);
+  const contratosSugeridos = scoreAssessment * 12;
+  const reunioesNecessarias = contratosSugeridos * REUNIOES_POR_CONTRATO;
 
   // Financiamento da aquisição da franquia (valor da venda, entrada, parcelas e juros mensal
   // informados pelo usuário na aba Simulador) — se não preenchido, cai no padrão: valor de
@@ -201,6 +285,16 @@ function simulate(model) {
   }
   const custoTotalAquisicao = entradaFin + installmentFin * parcelasFin;
 
+  // Despesas adicionais definidas livremente pelo usuário (funcionário, parceria, combustível etc.),
+  // custo mensal recorrente a partir do mês de início informado (1 = primeiro mês do contrato).
+  const outrasDespesas = zeros();
+  customExpenses.forEach(exp => {
+    const valor = Math.max(0, exp.valor || 0);
+    if (valor <= 0) return;
+    const startIdx = Math.min(months - 1, Math.max(0, Math.round(exp.mesInicio || 1) - 1));
+    for (let m = startIdx; m < months; m++) outrasDespesas[m] += -valor;
+  });
+
   const impostos = zeros(), royalties = zeros(), crm = zeros(), comercial = zeros();
   const funcionarios = zeros(), midia = zeros(), treinamento = zeros(), contabilidade = zeros();
   const monthlyExpense = zeros(), monthlyProfit = zeros(), cashFlow = zeros();
@@ -215,7 +309,7 @@ function simulate(model) {
     treinamento[m] = m === 0 ? -model.treinamento : 0;
     contabilidade[m] = -CUSTO_CONTABILIDADE_MENSAL;
 
-    monthlyExpense[m] = impostos[m] + royalties[m] + crm[m] + comercial[m] + funcionarios[m] + midia[m] + treinamento[m] + contabilidade[m] + financiamento[m];
+    monthlyExpense[m] = impostos[m] + royalties[m] + crm[m] + comercial[m] + funcionarios[m] + midia[m] + treinamento[m] + contabilidade[m] + financiamento[m] + outrasDespesas[m];
     monthlyProfit[m] = monthlyRevenue[m] + monthlyExpense[m];
     cashFlow[m] = (m === 0 ? 0 : cashFlow[m - 1]) + monthlyProfit[m];
   }
@@ -247,12 +341,13 @@ function simulate(model) {
   return {
     honorariosTax, honorariosCorp, honorariosTotal,
     faturamentoTax, faturamentoCorp, monthlyRevenue,
-    impostos, royalties, crm, comercial, funcionarios, midia, treinamento, contabilidade, financiamento,
+    impostos, royalties, crm, comercial, funcionarios, midia, treinamento, contabilidade, financiamento, outrasDespesas,
     monthlyExpense, monthlyProfit, cashFlow,
     faturamentoAno1, despesasAno1, lucroAno1, lucroFinal, roi, lucratividade,
     capitalGiro, breakEvenMonth, paybackMonth,
     valorVenda, entradaFin, parcelasFin, installmentFin, jurosFin, custoTotalAquisicao,
     investimentoInicial: entradaFin + model.treinamento,
+    contratosSugeridos, reunioesNecessarias,
     anos: model.anos,
   };
 }
@@ -526,6 +621,7 @@ function dreRowsHtml(r) {
   html += dataRow('Treinamento', r.treinamento, { colorize: true });
   html += dataRow('Contabilidade', r.contabilidade, { colorize: true });
   html += dataRow('Aquisição da franquia (entrada + parcelas)', r.financiamento, { colorize: true });
+  html += dataRow('Despesas adicionais', r.outrasDespesas, { colorize: true });
   html += dataRow('Total Despesas', r.monthlyExpense, { rowClass: 'total-row', colorize: true });
 
   html += dataRow('Lucro', r.monthlyProfit, { rowClass: 'hero-row', colorize: true });
@@ -659,12 +755,18 @@ function update() {
       ? `Valor da parcela: ${brl(r.installmentFin)} (${r.parcelasFin}x)`
       : `Sem parcelamento — ${brl(r.valorVenda)} à vista`;
   }
+  const assSugestao = document.getElementById('assSugestao');
+  if (assSugestao) {
+    assSugestao.textContent = `Sugestão: ${Math.round(r.contratosSugeridos)} contratos/ano (${Math.round(r.reunioesNecessarias)} reuniões necessárias)`;
+  }
 }
 
 document.getElementById('resetBtn').addEventListener('click', () => {
   PRODUCTS.forEach(p => inputs[p.id] = 0);
   renderFieldGroups();
   resetFinancingInputs();
+  resetAssessmentInputs();
+  resetCustomExpenses();
   update();
 });
 
@@ -685,10 +787,14 @@ function initTabs() {
   });
 }
 
+document.getElementById('addExpenseBtn').addEventListener('click', addCustomExpense);
+
 renderModelCards();
 renderPremissas();
 renderModelPills();
 renderFieldGroups();
 bindFinancingInputs();
+bindAssessmentInputs();
+renderCustomExpenses();
 initTabs();
 update();
