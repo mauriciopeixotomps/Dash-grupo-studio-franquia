@@ -404,8 +404,55 @@ function renderFlowChart(r, opts) {
       ${breakEvenMarker}${paybackMarker}
       ${breakEvenLabel}${paybackLabel}
       ${labels}
+      <g class="cursor-group" style="display:none;">
+        <line class="cursor-line" x1="0" y1="${padT}" x2="0" y2="${H - padB}" stroke="#7A7876" stroke-width="1" stroke-dasharray="3 3"/>
+        <circle class="cursor-dot-receita" r="4" fill="${COR_RECEITA}" stroke="#FDFDFD" stroke-width="1.5"/>
+        <circle class="cursor-dot-despesa" r="4" fill="${COR_DESPESA}" stroke="#FDFDFD" stroke-width="1.5"/>
+        <circle class="cursor-dot-lucro" r="4" fill="${COR_LUCRO}" stroke="#FDFDFD" stroke-width="1.5"/>
+        <circle class="cursor-dot-acumulado" r="5" fill="${COR_ACUMULADO}" stroke="#FDFDFD" stroke-width="1.5"/>
+      </g>
+      <rect class="chart-hover-rect" x="0" y="0" width="${W}" height="${H}" fill="transparent" style="cursor:crosshair;"/>
     </svg>
+    <div class="chart-tooltip" id="tooltip-${hostId}"></div>
   `;
+
+  const svgEl = host.querySelector('svg');
+  const hoverRect = svgEl.querySelector('.chart-hover-rect');
+  const cursorGroup = svgEl.querySelector('.cursor-group');
+  const cursorLine = svgEl.querySelector('.cursor-line');
+  const dotReceita = svgEl.querySelector('.cursor-dot-receita');
+  const dotDespesa = svgEl.querySelector('.cursor-dot-despesa');
+  const dotLucro = svgEl.querySelector('.cursor-dot-lucro');
+  const dotAcumulado = svgEl.querySelector('.cursor-dot-acumulado');
+  const tooltip = document.getElementById('tooltip-' + hostId);
+
+  const monthLabel = idx => n <= 12 ? MESES[idx] : `Ano ${Math.floor(idx / 12) + 1} · ${MESES[idx % 12]}`;
+
+  const handleMove = clientX => {
+    const rect = svgEl.getBoundingClientRect();
+    const scale = rect.width / W;
+    const relX = (clientX - rect.left) / scale;
+    let idx = Math.round((relX - padL) / (W - padL - padR) * (n - 1));
+    idx = Math.max(0, Math.min(n - 1, idx));
+    const px = x(idx);
+    cursorLine.setAttribute('x1', px); cursorLine.setAttribute('x2', px);
+    dotReceita.setAttribute('cx', px); dotReceita.setAttribute('cy', yFlow(flows.receita[idx]));
+    dotDespesa.setAttribute('cx', px); dotDespesa.setAttribute('cy', yFlow(flows.despesa[idx]));
+    dotLucro.setAttribute('cx', px); dotLucro.setAttribute('cy', yFlow(flows.lucro[idx]));
+    dotAcumulado.setAttribute('cx', px); dotAcumulado.setAttribute('cy', yAcum(acumulado[idx]));
+    cursorGroup.style.display = '';
+    tooltip.innerHTML = `<b>${monthLabel(idx)}</b>Receita: ${brl(flows.receita[idx])}<br>Despesa: ${brl(flows.despesa[idx])}<br>Lucro: ${brl(flows.lucro[idx])}<br>Caixa acumulado: ${brl(acumulado[idx])}`;
+    let leftPx = px * scale;
+    leftPx = Math.max(55, Math.min(rect.width - 55, leftPx));
+    tooltip.style.left = leftPx + 'px';
+    tooltip.style.top = (padT * scale) + 'px';
+    tooltip.classList.add('visible');
+  };
+  hoverRect.addEventListener('mousemove', e => handleMove(e.clientX));
+  hoverRect.addEventListener('mouseleave', () => {
+    cursorGroup.style.display = 'none';
+    tooltip.classList.remove('visible');
+  });
 
   const titleEl = document.getElementById(titleId);
   if (titleEl) titleEl.textContent = `${titlePrefix} ${periodoLabel(n)}`;
@@ -424,13 +471,18 @@ function renderFlowChart(r, opts) {
 }
 
 // ---------- Render: DRE / Fluxo de Caixa Tables ----------
+function signCls(v) { return v > 0 ? 'pos' : v < 0 ? 'neg' : ''; }
 function dreDataRow(label, arr, opts) {
   const sum = a => a.reduce((x, y) => x + y, 0);
-  const cell = (v, cls) => `<td class="${cls || ''}">${brl(v)}</td>`;
   opts = opts || {};
-  const cls = opts.rowClass || '';
-  const cells = arr.map(v => cell(v, opts.colorize ? (v >= 0 ? 'pos' : 'neg') : '')).join('');
-  const total = opts.showTotal !== false ? `<td class="total-col ${opts.colorize ? (sum(arr) >= 0 ? 'pos' : 'neg') : ''}">${brl(sum(arr))}</td>` : '<td class="total-col"></td>';
+  const cell = (v, i) => {
+    const cls = opts.colorize ? signCls(v) : '';
+    const border = (opts.yearBoundaries && i % 12 === 0 && i > 0) ? ' style="border-left:2px solid var(--border);"' : '';
+    return `<td class="${cls}"${border}>${brl(v)}</td>`;
+  };
+  const cls = opts.rowClass || 'data-row';
+  const cells = arr.map((v, i) => cell(v, i)).join('');
+  const total = opts.showTotal !== false ? `<td class="total-col ${opts.colorize ? signCls(sum(arr)) : ''}">${brl(sum(arr))}</td>` : '<td class="total-col"></td>';
   return `<tr class="${cls}"><td class="label">${label}</td>${cells}${total}</tr>`;
 }
 function dreGroupHead(label, colspan) {
@@ -455,26 +507,26 @@ function dreRowsHtml(r) {
 
   let html = '';
   html += groupHead('Honorários (competência)');
-  html += dataRow('Tax', r.honorariosTax);
-  html += dataRow('Corporate', r.honorariosCorp);
-  html += dataRow('Total Honorários', r.honorariosTotal, { rowClass: 'total-row' });
+  html += dataRow('Tax', r.honorariosTax, { colorize: true });
+  html += dataRow('Corporate', r.honorariosCorp, { colorize: true });
+  html += dataRow('Total Honorários', r.honorariosTotal, { rowClass: 'total-row', colorize: true });
 
   html += groupHead('Faturamento (caixa)');
-  html += dataRow('Tax', r.faturamentoTax);
-  html += dataRow('Corporate', r.faturamentoCorp);
-  html += dataRow('Total Faturamento', r.monthlyRevenue, { rowClass: 'total-row' });
+  html += dataRow('Tax', r.faturamentoTax, { colorize: true });
+  html += dataRow('Corporate', r.faturamentoCorp, { colorize: true });
+  html += dataRow('Total Faturamento', r.monthlyRevenue, { rowClass: 'total-row', colorize: true });
 
   html += groupHead('Despesas');
-  html += dataRow('Impostos', r.impostos);
-  html += dataRow('Royalties', r.royalties);
-  html += dataRow('CRM', r.crm);
-  html += dataRow('Despesas Comerciais', r.comercial);
-  html += dataRow('Funcionários', r.funcionarios);
-  html += dataRow('Mídia', r.midia);
-  html += dataRow('Treinamento', r.treinamento);
-  html += dataRow('Contabilidade', r.contabilidade);
-  html += dataRow('Aquisição da franquia (entrada + parcelas)', r.financiamento);
-  html += dataRow('Total Despesas', r.monthlyExpense, { rowClass: 'total-row' });
+  html += dataRow('Impostos', r.impostos, { colorize: true });
+  html += dataRow('Royalties', r.royalties, { colorize: true });
+  html += dataRow('CRM', r.crm, { colorize: true });
+  html += dataRow('Despesas Comerciais', r.comercial, { colorize: true });
+  html += dataRow('Funcionários', r.funcionarios, { colorize: true });
+  html += dataRow('Mídia', r.midia, { colorize: true });
+  html += dataRow('Treinamento', r.treinamento, { colorize: true });
+  html += dataRow('Contabilidade', r.contabilidade, { colorize: true });
+  html += dataRow('Aquisição da franquia (entrada + parcelas)', r.financiamento, { colorize: true });
+  html += dataRow('Total Despesas', r.monthlyExpense, { rowClass: 'total-row', colorize: true });
 
   html += dataRow('Lucro', r.monthlyProfit, { rowClass: 'hero-row', colorize: true });
   html += dataRow('Fluxo de Caixa acumulado', r.cashFlow, { rowClass: 'hero-row', colorize: true, showTotal: false });
@@ -485,31 +537,38 @@ function renderDRE(r) {
   document.getElementById('dreTable').innerHTML = dreTableHtml(dreRowsHtml(r));
 }
 
-// Agrega os meses em totais por ano (Ano 1..Ano N) para caber o contrato inteiro (3 a 10 anos) na tabela
-function yearlyTotals(arr, anos) {
-  const out = [];
-  for (let y = 0; y < anos; y++) out.push(arr.slice(y * 12, y * 12 + 12).reduce((a, b) => a + b, 0));
-  return out;
-}
-function yearlyEndValues(arr, anos) {
-  const out = [];
-  for (let y = 0; y < anos; y++) out.push(arr[y * 12 + 11]);
-  return out;
+function fluxoHeaderHtml(anos) {
+  let yearRow = '<th class="label"></th>';
+  for (let y = 0; y < anos; y++) {
+    yearRow += `<th colspan="12" class="year-head"${y > 0 ? ' style="border-left:2px solid var(--border);"' : ''}>Ano ${y + 1}</th>`;
+  }
+  yearRow += '<th class="total-col"></th>';
+  let monthRow = '<th class="label">R$</th>';
+  for (let y = 0; y < anos; y++) {
+    MESES.forEach((m, mi) => {
+      monthRow += `<th${(y > 0 && mi === 0) ? ' style="border-left:2px solid var(--border);"' : ''}>${m}</th>`;
+    });
+  }
+  monthRow += '<th class="total-col">Total Contrato</th>';
+  return `<tr>${yearRow}</tr><tr>${monthRow}</tr>`;
 }
 
 function fluxoRowsHtml(r) {
-  const anos = r.anos;
   let html = '';
-  html += dreDataRow('Faturamento', yearlyTotals(r.monthlyRevenue, anos), { rowClass: 'total-row' });
-  html += dreDataRow('Despesas', yearlyTotals(r.monthlyExpense, anos), { rowClass: 'total-row' });
-  html += dreDataRow('Lucro', yearlyTotals(r.monthlyProfit, anos), { rowClass: 'hero-row', colorize: true });
-  html += dreDataRow('Fluxo de Caixa acumulado (final do ano)', yearlyEndValues(r.cashFlow, anos), { rowClass: 'hero-row', colorize: true, showTotal: false });
+  html += dreDataRow('Faturamento', r.monthlyRevenue, { rowClass: 'total-row', colorize: true, yearBoundaries: true });
+  html += dreDataRow('Despesas', r.monthlyExpense, { rowClass: 'total-row', colorize: true, yearBoundaries: true });
+  html += dreDataRow('Lucro', r.monthlyProfit, { rowClass: 'hero-row', colorize: true, yearBoundaries: true });
+  html += dreDataRow('Fluxo de Caixa acumulado', r.cashFlow, { rowClass: 'hero-row', colorize: true, showTotal: false, yearBoundaries: true });
   return html;
 }
 
 function renderFluxoTable(r) {
-  const headers = Array.from({ length: r.anos }, (_, i) => `Ano ${i + 1}`);
-  document.getElementById('fluxoTable').innerHTML = dreTableHtml(fluxoRowsHtml(r), headers, 'Total Contrato');
+  document.getElementById('fluxoTable').innerHTML = `
+    <table class="dre-table">
+      <thead>${fluxoHeaderHtml(r.anos)}</thead>
+      <tbody>${fluxoRowsHtml(r)}</tbody>
+    </table>
+  `;
 }
 
 // ---------- Print Report (export) ----------

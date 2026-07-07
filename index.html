@@ -290,6 +290,15 @@ table.premissas-table td .tkm-val{position:relative;z-index:1;font-weight:700;co
 .chart-legend .item b{color:var(--text-muted);font-weight:600;margin-left:2px;}
 svg text{font-family:-apple-system,Roboto,sans-serif;}
 
+#chartHost, #chartHostFluxo{position:relative;}
+.chart-tooltip{
+  position:absolute;pointer-events:none;background:var(--grafite);color:var(--branco);
+  font-size:0.72rem;line-height:1.6;padding:8px 10px;border-radius:8px;box-shadow:0 4px 14px rgba(0,0,0,0.2);
+  transform:translate(-50%,-100%);white-space:nowrap;z-index:5;opacity:0;transition:opacity .12s ease;
+}
+.chart-tooltip.visible{opacity:1;}
+.chart-tooltip b{color:var(--duna);display:block;margin-bottom:3px;font-size:0.74rem;}
+
 /* DRE / FLUXO TABLE */
 .dre-scroll{overflow-x:auto;}
 table.dre-table{width:100%;border-collapse:collapse;font-size:0.78rem;white-space:nowrap;}
@@ -302,9 +311,12 @@ table.dre-table th.label{background:var(--surface);}
 table.dre-table tr.group-head td{color:var(--bronze);font-weight:700;padding-top:16px;font-size:0.72rem;text-transform:uppercase;letter-spacing:0.6px;border-bottom:1px solid var(--border);background:transparent;}
 table.dre-table tr.total-row td{font-weight:700;color:var(--grafite);border-top:1px solid var(--border);}
 table.dre-table tr.hero-row td{font-weight:700;font-size:0.86rem;border-top:2px solid var(--bronze);padding-top:10px;}
-table.dre-table td.pos{color:var(--green);}
-table.dre-table td.neg{color:var(--red);}
+table.dre-table tr.data-row:nth-of-type(even) td{background:var(--surface-alt);}
+table.dre-table tr.data-row:nth-of-type(even) td.label{background:var(--surface-alt);}
+table.dre-table td.pos{color:var(--green);font-weight:600;}
+table.dre-table td.neg{color:var(--red);font-weight:600;}
 table.dre-table td.total-col{border-left:1px solid var(--border);}
+table.dre-table th.year-head{text-align:center;background:var(--surface-alt);color:var(--bronze);}
 
 footer{padding:36px 0;text-align:center;color:var(--text-muted);font-size:0.75rem;}
 footer .disclaimer{max-width:720px;margin:0 auto 18px;line-height:1.6;}
