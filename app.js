@@ -155,7 +155,9 @@ function resetPlatinumPremiumInputs() {
 
 // valorVenda: preço negociado da franquia (0 = usa o valor de aquisição do modelo selecionado)
 // entrada/parcelas/juros: condições de pagamento dessa aquisição (0 parcelas = pagamento à vista)
-const financing = { valorVenda: 0, entrada: 0, parcelas: 0, juros: 0 };
+// formaPagamento: 'boleto' (juros mensal informado, amortização Price) ou 'cartao' (taxa fixa por
+// nº de parcelas, tabela TAXA_CARTAO_PARCELAS — ver simulate()).
+const financing = { valorVenda: 0, entrada: 0, parcelas: 0, juros: 0, formaPagamento: 'boleto' };
 function bindFinancingInputs() {
   const ids = { valorVenda: 'finValorVenda', entrada: 'finEntrada', parcelas: 'finParcelas', juros: 'finJuros' };
   Object.entries(ids).forEach(([key, id]) => {
@@ -164,13 +166,30 @@ function bindFinancingInputs() {
       update();
     });
   });
+  document.getElementById('finFormaPagamento').addEventListener('change', e => {
+    financing.formaPagamento = e.target.value;
+    updateFormaPagamentoUI();
+    update();
+  });
+  updateFormaPagamentoUI();
+}
+function updateFormaPagamentoUI() {
+  const isCartao = financing.formaPagamento === 'cartao';
+  const jurosInput = document.getElementById('finJuros');
+  const parcelasInput = document.getElementById('finParcelas');
+  jurosInput.disabled = isCartao;
+  parcelasInput.max = isCartao ? '12' : '';
+  document.getElementById('finJurosRow').style.display = isCartao ? 'none' : '';
+  document.getElementById('finCartaoHint').style.display = isCartao ? '' : 'none';
 }
 function resetFinancingInputs() {
-  financing.valorVenda = 0; financing.entrada = 0; financing.parcelas = 0; financing.juros = 0;
+  financing.valorVenda = 0; financing.entrada = 0; financing.parcelas = 0; financing.juros = 0; financing.formaPagamento = 'boleto';
   document.getElementById('finValorVenda').value = '';
   document.getElementById('finEntrada').value = '0';
   document.getElementById('finParcelas').value = '0';
   document.getElementById('finJuros').value = '0';
+  document.getElementById('finFormaPagamento').value = 'boleto';
+  updateFormaPagamentoUI();
 }
 
 // Assessment (aba Simulador da planilha original): respostas qualitativas que alimentam uma
@@ -341,21 +360,36 @@ function simulate(model) {
   const contratosSugeridos = scoreAssessment * 12;
   const reunioesNecessarias = contratosSugeridos * REUNIOES_POR_CONTRATO;
 
-  // Financiamento da aquisição da franquia (valor da venda, entrada, parcelas e juros mensal
-  // informados pelo usuário na aba Simulador) — se não preenchido, cai no padrão: valor de
-  // aquisição do modelo pago à vista no fechamento (mês 0), igual ao comportamento anterior.
+  // Financiamento da aquisição da franquia (valor da venda, entrada, parcelas e forma de
+  // pagamento informados pelo usuário na aba Simulador) — se não preenchido, cai no padrão:
+  // valor de aquisição do modelo pago à vista no fechamento (mês 0), igual ao comportamento anterior.
   const valorVenda = financing.valorVenda > 0 ? financing.valorVenda : model.aquisicao;
-  const parcelasFin = Math.min(months - 1, Math.max(0, Math.round(financing.parcelas || 0)));
-  const jurosFin = Math.max(0, financing.juros || 0) / 100;
+  const isCartao = financing.formaPagamento === 'cartao';
   const financiamento = zeros();
-  let entradaFin, installmentFin;
-  if (parcelasFin > 0) {
+  let parcelasFin, jurosFin, entradaFin, installmentFin;
+
+  if (isCartao) {
+    // Cartão de crédito: taxa fixa por nº de parcelas (TAXA_CARTAO_PARCELAS, 1-12x) aplicada por
+    // "gross-up" — não é juros compostos. Sempre há custo de maquininha, mesmo em 1x (à vista).
+    parcelasFin = Math.min(12, Math.max(1, Math.round(financing.parcelas || 1)));
+    entradaFin = Math.min(Math.max(0, financing.entrada || 0), valorVenda);
+    const pv = valorVenda - entradaFin;
+    jurosFin = TAXA_CARTAO_PARCELAS[parcelasFin];
+    const totalCobranca = pv > 0 ? pv / (1 - jurosFin) : 0;
+    installmentFin = totalCobranca / parcelasFin;
+    financiamento[0] += -entradaFin;
+    for (let k = 0; k < parcelasFin; k++) financiamento[k + 1] += -installmentFin;
+  } else if (Math.round(financing.parcelas || 0) > 0) {
+    parcelasFin = Math.min(months - 1, Math.max(0, Math.round(financing.parcelas || 0)));
+    jurosFin = Math.max(0, financing.juros || 0) / 100;
     entradaFin = Math.min(Math.max(0, financing.entrada || 0), valorVenda);
     const pv = valorVenda - entradaFin;
     installmentFin = jurosFin > 0 ? pv * jurosFin / (1 - Math.pow(1 + jurosFin, -parcelasFin)) : pv / parcelasFin;
     financiamento[0] += -entradaFin;
     for (let k = 0; k < parcelasFin; k++) financiamento[k + 1] += -installmentFin;
   } else {
+    parcelasFin = 0;
+    jurosFin = 0;
     entradaFin = valorVenda;
     installmentFin = 0;
     financiamento[0] += -valorVenda;
@@ -444,7 +478,7 @@ function simulate(model) {
 // ---------- Render: Stats ----------
 function statCardsData(model, r) {
   const financiamentoDesc = r.parcelasFin > 0
-    ? `Entrada ${brl(r.entradaFin)} + ${r.parcelasFin}x ${brl(r.installmentFin)}${r.jurosFin > 0 ? ` (juros de ${(r.jurosFin * 100).toFixed(1)}% a.m.)` : ''} — custo total ${brl(r.custoTotalAquisicao)}`
+    ? `Entrada ${brl(r.entradaFin)} + ${r.parcelasFin}x ${brl(r.installmentFin)}${r.jurosFin > 0 ? (financing.formaPagamento === 'cartao' ? ` (taxa cartão ${(r.jurosFin * 100).toFixed(2)}%)` : ` (juros de ${(r.jurosFin * 100).toFixed(1)}% a.m.)`) : ''} — custo total ${brl(r.custoTotalAquisicao)}`
     : `${brl(r.valorVenda)} pago à vista no fechamento`;
   // Card resumido: só os custos fixos e previsíveis da operação (royalties/taxa de franquia + CRM +
   // contabilidade). Impostos, comercial, funcionários, mídia, financiamento e despesas adicionais
@@ -848,7 +882,7 @@ function update() {
   const finParcelaValor = document.getElementById('finParcelaValor');
   if (finParcelaValor) {
     finParcelaValor.textContent = r.parcelasFin > 0
-      ? `Valor da parcela: ${brl(r.installmentFin)} (${r.parcelasFin}x)`
+      ? `Valor da parcela: ${brl(r.installmentFin)} (${r.parcelasFin}x)${financing.formaPagamento === 'cartao' ? ` — taxa cartão ${(r.jurosFin * 100).toFixed(2)}%` : ''}`
       : `Sem parcelamento — ${brl(r.valorVenda)} à vista`;
   }
   const assSugestao = document.getElementById('assSugestao');

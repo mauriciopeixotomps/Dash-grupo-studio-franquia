@@ -206,3 +206,12 @@ const FAIXA_GANHOS = [
   { ate: 1_000_000_000, pct: 0.55 },
   { ate: Infinity, pct: 0.60 },
 ];
+
+// Taxa de tarifa de cartão por nº de parcelas (1-12), fonte: "simulador_parcelamento.xlsx".
+// A tarifa é aplicada por "gross-up" (não é juros compostos como no financiamento por boleto):
+// totalCobrado = valorAFinanciar / (1 - taxa), de forma que, após a maquininha descontar a
+// taxa do totalCobrado, sobre exatamente o valorAFinanciar para o Grupo Studio.
+const TAXA_CARTAO_PARCELAS = {
+  1: 0.0265, 2: 0.0271, 3: 0.0271, 4: 0.0271, 5: 0.0271, 6: 0.0271,
+  7: 0.0283, 8: 0.0283, 9: 0.0283, 10: 0.0283, 11: 0.0283, 12: 0.0283,
+};
