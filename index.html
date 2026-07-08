@@ -457,6 +457,28 @@ footer img{height:26px;opacity:0.6;margin-bottom:14px;}
           </div>
           <div class="model-pills" id="modelPills"></div>
 
+          <div class="financing-box">
+            <h5>Financiamento da aquisição da franquia</h5>
+            <div class="field-row">
+              <label for="finValorVenda">Valor da venda (R$)</label>
+              <input type="number" id="finValorVenda" min="0" placeholder="0">
+            </div>
+            <div class="field-row">
+              <label for="finEntrada">Entrada (R$)</label>
+              <input type="number" id="finEntrada" min="0" value="0">
+            </div>
+            <div class="field-row">
+              <label for="finParcelas">Parcelas (nº meses)</label>
+              <input type="number" id="finParcelas" min="0" value="0">
+            </div>
+            <div class="field-row">
+              <label for="finJuros">Juros mensal (%)</label>
+              <input type="number" id="finJuros" min="0" step="0.1" value="0">
+            </div>
+            <div class="financing-result" id="finParcelaValor"></div>
+            <p class="financing-hint">Deixe zerado para considerar o valor de aquisição do modelo pago à vista.</p>
+          </div>
+
           <div class="assessment-box">
             <h5>Condições comerciais</h5>
             <div class="field-row">
@@ -504,28 +526,6 @@ footer img{height:26px;opacity:0.6;margin-bottom:14px;}
             </div>
             <div class="financing-result" id="assSugestao"></div>
             <p class="financing-hint">Projeção de contratos/ano com base no assessment — não altera os contratos preenchidos abaixo. "Vendedor focado" também soma um custo de equipe no fluxo de caixa.</p>
-          </div>
-
-          <div class="financing-box">
-            <h5>Financiamento da aquisição da franquia</h5>
-            <div class="field-row">
-              <label for="finValorVenda">Valor da venda (R$)</label>
-              <input type="number" id="finValorVenda" min="0" placeholder="0">
-            </div>
-            <div class="field-row">
-              <label for="finEntrada">Entrada (R$)</label>
-              <input type="number" id="finEntrada" min="0" value="0">
-            </div>
-            <div class="field-row">
-              <label for="finParcelas">Parcelas (nº meses)</label>
-              <input type="number" id="finParcelas" min="0" value="0">
-            </div>
-            <div class="field-row">
-              <label for="finJuros">Juros mensal (%)</label>
-              <input type="number" id="finJuros" min="0" step="0.1" value="0">
-            </div>
-            <div class="financing-result" id="finParcelaValor"></div>
-            <p class="financing-hint">Deixe zerado para considerar o valor de aquisição do modelo pago à vista.</p>
           </div>
 
           <div class="custom-expenses-box">
