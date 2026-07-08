@@ -21,8 +21,8 @@ function renderModelCards() {
   const grid = document.getElementById('modelsGrid');
   grid.innerHTML = '';
   MODELS.forEach(m => {
-    const card = el('div', 'model-card' + (m.id === 'FLAGSHIP' ? ' flagship' : ''));
-    if (m.id === 'FLAGSHIP') card.appendChild(el('span', 'badge', 'Topo de linha'));
+    const card = el('div', 'model-card' + (m.id === 'GS_BLACK' ? ' flagship' : ''));
+    if (m.id === 'GS_BLACK') card.appendChild(el('span', 'badge', 'Topo de linha'));
     card.appendChild(el('h3', null, m.nome));
     card.appendChild(el('div', 'price', `${brl(m.aquisicao)}<small>investimento de aquisição</small>`));
     const dl = el('dl');
@@ -300,8 +300,7 @@ function simulate(model) {
     + (assessment.parceria ? 0.5 : 0)
     + (assessment.vendedor ? 1 : 0)
     + (assessment.carteira ? 0.5 : 0)
-    + (model.id === 'GS_PARTNER' ? 2 : 0)
-    + (model.id === 'FLAGSHIP' ? 5 : 0);
+    + (model.id === 'GS_PARTNER' ? 2 : 0);
   const contratosSugeridos = scoreAssessment * 12;
   const reunioesNecessarias = contratosSugeridos * REUNIOES_POR_CONTRATO;
 

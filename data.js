@@ -99,24 +99,6 @@ const MODELS = [
     equipeDedicada: false,
     nota: 'Honorários de 35% a 60%, conforme a faixa de faturamento médio (últimos 5 anos) do cliente. Remuneração variável conforme performance individual da unidade.',
   },
-  {
-    id: 'FLAGSHIP',
-    nome: 'Flagship',
-    aquisicao: 250000,
-    royalties: 13333,
-    crm: 531.56,
-    treinamento: 3250,
-    anos: 10,
-    prazoTexto: '10 anos',
-    abrangencia: 'Nacional',
-    pctTax: 0.50,
-    pctCorporate: 0.50,
-    podeVenderFranquia: true,
-    estrutura: 'Cria sua rede de partners e franqueados',
-    consultasPJ: 200,
-    midiaMensal: 10000,
-    equipeDedicada: true,
-  },
 ];
 
 // totalCreditos = base de créditos/faturamento do cliente (aba Premissas, seção Operação)
