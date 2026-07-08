@@ -246,6 +246,9 @@ table.premissas-table td .tkm-val{position:relative;z-index:1;font-weight:700;co
 .field-row select{width:auto;text-align:left;}
 .field-row input:hover, .field-row select:hover{border-color:var(--bronze);}
 .field-row input:focus, .field-row select:focus{outline:none;border-color:var(--duna);box-shadow:0 0 0 3px rgba(213,174,119,0.25);}
+.field-row.stacked{flex-direction:column;align-items:stretch;gap:6px;}
+.field-row.stacked select{width:100%;font-weight:500;}
+#finValorVenda{width:112px;}
 .expense-row{display:flex;align-items:center;gap:6px;padding:6px 0;}
 .expense-row .expense-nome{
   flex:1;min-width:0;background:var(--branco);border:1.5px solid var(--cinza-neutro);color:var(--text);
@@ -464,7 +467,7 @@ footer img{height:26px;opacity:0.6;margin-bottom:14px;}
               <label for="finValorVenda">Valor da venda (R$)</label>
               <input type="number" id="finValorVenda" min="0" placeholder="0">
             </div>
-            <div class="field-row">
+            <div class="field-row stacked">
               <label for="finFormaPagamento">Forma de pagamento</label>
               <select id="finFormaPagamento">
                 <option value="boleto">Boleto / financiamento próprio</option>
