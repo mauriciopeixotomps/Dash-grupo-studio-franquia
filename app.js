@@ -7,7 +7,9 @@ function brl(v, opts) {
   return `${sign}R$ ${formatted}`;
 }
 function pct(v) {
-  return `${Math.round(v * 100)}%`;
+  const rounded = Math.round(v * 1000) / 10;
+  const formatted = Number.isInteger(rounded) ? rounded : rounded.toFixed(1).replace('.', ',');
+  return `${formatted}%`;
 }
 function el(tag, cls, html) {
   const e = document.createElement(tag);
