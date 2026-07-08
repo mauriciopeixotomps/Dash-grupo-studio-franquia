@@ -125,6 +125,32 @@ function resetParticipantesInput() {
   document.getElementById('participantesAdicionais').value = '0';
 }
 
+// PLATINUM: até 2 produtos Corporate "em destaque" escolhidos pelo franqueado ficam a
+// pctCorporatePremium (35%); os demais produtos Corporate ficam a pctCorporate (17,5%).
+const platinumPremium = { produto1: '', produto2: '' };
+function renderPlatinumPremiumOptions() {
+  const corporateProducts = PRODUCTS.filter(p => p.grupo === 'corporate');
+  const optionsHtml = '<option value="">— nenhum —</option>' + corporateProducts.map(p => `<option value="${p.id}">${p.nome}</option>`).join('');
+  document.getElementById('platinumProduto1').innerHTML = optionsHtml;
+  document.getElementById('platinumProduto2').innerHTML = optionsHtml;
+}
+function bindPlatinumPremiumInputs() {
+  document.getElementById('platinumProduto1').addEventListener('change', e => {
+    platinumPremium.produto1 = e.target.value;
+    update();
+  });
+  document.getElementById('platinumProduto2').addEventListener('change', e => {
+    platinumPremium.produto2 = e.target.value;
+    update();
+  });
+}
+function resetPlatinumPremiumInputs() {
+  platinumPremium.produto1 = '';
+  platinumPremium.produto2 = '';
+  document.getElementById('platinumProduto1').value = '';
+  document.getElementById('platinumProduto2').value = '';
+}
+
 // valorVenda: preço negociado da franquia (0 = usa o valor de aquisição do modelo selecionado)
 // entrada/parcelas/juros: condições de pagamento dessa aquisição (0 parcelas = pagamento à vista)
 const financing = { valorVenda: 0, entrada: 0, parcelas: 0, juros: 0 };
@@ -264,11 +290,20 @@ function simulate(model) {
   const pctFaixaAtual = model.faixaProgressiva ? pctPorFaixa(faturamentoClienteMedio) : null;
   const pctTaxEfetivo = model.faixaProgressiva ? pctFaixaAtual : model.pctTax;
   const pctCorporateEfetivo = model.faixaProgressiva ? pctFaixaAtual : model.pctCorporate;
+  // PLATINUM: até 2 produtos Corporate escolhidos pelo franqueado ficam no % premium (35%);
+  // os demais produtos Corporate usam o % padrão (17,5%).
+  const produtosPremiumIds = model.produtosPremiumCount ? [platinumPremium.produto1, platinumPremium.produto2].filter(Boolean) : [];
+  const pctParaProduto = p => {
+    if (model.faixaProgressiva) return pctFaixaAtual;
+    if (p.grupo === 'tax') return pctTaxEfetivo;
+    if (produtosPremiumIds.includes(p.id)) return model.pctCorporatePremium;
+    return pctCorporateEfetivo;
+  };
 
   PRODUCTS.forEach(p => {
     const contractsYear = inputs[p.id] || 0;
     const monthlyContracts = contractsYear / 12;
-    const feePerContract = p.tkm * p.aprovacao * (p.grupo === 'tax' ? pctTaxEfetivo : pctCorporateEfetivo);
+    const feePerContract = p.tkm * p.aprovacao * pctParaProduto(p);
     const revenueClosedPerMonth = monthlyContracts * feePerContract;
     const honorariosArr = p.grupo === 'tax' ? honorariosTax : honorariosCorp;
     const faturamentoArr = p.grupo === 'tax' ? faturamentoTax : faturamentoCorp;
@@ -834,6 +869,7 @@ document.getElementById('resetBtn').addEventListener('click', () => {
   resetCustomExpenses();
   resetFaixaInput();
   resetParticipantesInput();
+  resetPlatinumPremiumInputs();
   update();
 });
 
@@ -864,6 +900,8 @@ bindFinancingInputs();
 bindAssessmentInputs();
 bindFaixaInput();
 bindParticipantesInput();
+renderPlatinumPremiumOptions();
+bindPlatinumPremiumInputs();
 renderCustomExpenses();
 initTabs();
 update();
