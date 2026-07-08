@@ -7,7 +7,7 @@ const MODELS = [
     nome: 'TAX',
     aquisicao: 35000,
     royalties: 1500,
-    crm: 536.11,
+    crm: 531.56,
     treinamento: 3250,
     anos: 3,
     prazoTexto: '3 anos',
@@ -25,7 +25,7 @@ const MODELS = [
     nome: 'PLATINUM',
     aquisicao: 50000,
     royalties: 1500,
-    crm: 536.11,
+    crm: 531.56,
     treinamento: 3250,
     anos: 5,
     prazoTexto: '5 anos',
@@ -43,7 +43,7 @@ const MODELS = [
     nome: 'CORPORATE',
     aquisicao: 90000,
     royalties: 1500,
-    crm: 536.11,
+    crm: 531.56,
     treinamento: 3250,
     anos: 10,
     prazoTexto: '10 anos',
@@ -61,26 +61,50 @@ const MODELS = [
     nome: 'GS Partner',
     aquisicao: 120000,
     royalties: 1500,
-    crm: 536.11,
+    crm: 531.56,
+    treinamento: 3250,
+    anos: 10,
+    prazoTexto: '10 anos',
+    abrangencia: 'Nacional',
+    // % de honorários é progressivo (35%-60%) conforme a FAIXA_GANHOS abaixo, aplicado sobre a
+    // faixa de faturamento médio anual (últimos 5 anos) do cliente — pctTax/pctCorporate aqui
+    // servem só de valor de referência/fallback, simulate() usa faixaProgressiva:true para ignorá-los.
+    pctTax: 0.50,
+    pctCorporate: 0.50,
+    faixaProgressiva: true,
+    podeVenderFranquia: false,
+    estrutura: 'Modelo com rede — pode criar rede de Partners',
+    consultasPJ: 200,
+    midiaMensal: 3000,
+    equipeDedicada: true,
+    nota: 'Honorários de 35% a 60%, conforme a faixa de faturamento médio (últimos 5 anos) do cliente. Investimento obrigatório em mídia de R$3.000/mês.',
+  },
+  {
+    id: 'GS_BLACK',
+    nome: 'GS Black',
+    aquisicao: 200000,
+    royalties: 1500,
+    crm: 531.56,
     treinamento: 3250,
     anos: 10,
     prazoTexto: '10 anos',
     abrangencia: 'Nacional',
     pctTax: 0.50,
     pctCorporate: 0.50,
+    faixaProgressiva: true,
     podeVenderFranquia: false,
-    estrutura: 'Cria sua rede de partners',
+    estrutura: 'Modelo autônomo — não cria rede de Partners, atua diretamente na prospecção e fechamento',
     consultasPJ: 200,
-    midiaMensal: 5000,
-    equipeDedicada: true,
-    nota: 'Honorários entre 35% e 50%, conforme faixa de faturamento do cliente.',
+    midiaMensal: 0,
+    equipeDedicada: false,
+    nota: 'Honorários de 35% a 60%, conforme a faixa de faturamento médio (últimos 5 anos) do cliente. Remuneração variável conforme performance individual da unidade.',
   },
   {
     id: 'FLAGSHIP',
     nome: 'Flagship',
     aquisicao: 250000,
     royalties: 13333,
-    crm: 536.11,
+    crm: 531.56,
     treinamento: 3250,
     anos: 10,
     prazoTexto: '10 anos',
@@ -123,3 +147,18 @@ const CUSTO_FUNCIONARIO_MENSAL = 7000;
 const IMPOSTOS_PCT = 0.065;
 const CUSTO_POR_REUNIAO = 40;
 const REUNIOES_POR_CONTRATO = 20;
+
+// Taxa de treinamento (aba "Política Comercial 2026") é cobrada por participante: o valor em
+// model.treinamento já cobre o(s) participante(s) inclusos; cada participante ADICIONAL soma este valor.
+const CUSTO_PARTICIPANTE_ADICIONAL = 1500;
+
+// Tabela de ganhos progressiva (GS Partner / GS Black): % de honorários conforme o faturamento
+// médio anual do cliente nos últimos 5 anos — "Política Comercial 2026".
+const FAIXA_GANHOS = [
+  { ate: 50_000_000, pct: 0.35 },
+  { ate: 100_000_000, pct: 0.40 },
+  { ate: 200_000_000, pct: 0.45 },
+  { ate: 500_000_000, pct: 0.50 },
+  { ate: 1_000_000_000, pct: 0.55 },
+  { ate: Infinity, pct: 0.60 },
+];

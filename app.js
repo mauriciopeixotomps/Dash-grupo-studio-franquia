@@ -30,13 +30,16 @@ function renderModelCards() {
       ['Royalties/mês', brl(m.royalties)],
       ['Prazo de contrato', m.prazoTexto],
       ['Abrangência', m.abrangencia],
-      ['% Honorários Tax', pct(m.pctTax)],
-      ['% Honorários Corporate', pct(m.pctCorporate)],
+      m.faixaProgressiva
+        ? ['% Honorários', '35% a 60% (faixa progressiva)']
+        : null,
+      m.faixaProgressiva ? null : ['% Honorários Tax', pct(m.pctTax)],
+      m.faixaProgressiva ? null : ['% Honorários Corporate', pct(m.pctCorporate)],
       ['Mídia/mês', m.midiaMensal ? brl(m.midiaMensal) : '—'],
       ['Equipe dedicada', m.equipeDedicada ? '<span class="tag-yes">Sim</span>' : '<span class="tag-no">Não</span>'],
       ['Pode vender franquia', m.podeVenderFranquia ? '<span class="tag-yes">Sim</span>' : '<span class="tag-no">Não</span>'],
     ];
-    rows.forEach(([k, v]) => {
+    rows.filter(Boolean).forEach(([k, v]) => {
       const row = el('div', 'row');
       row.appendChild(el('span', null, k));
       row.appendChild(el('span', null, v));
@@ -89,6 +92,38 @@ function renderPremissas() {
 let selectedModelId = 'TAX';
 const inputs = {};
 PRODUCTS.forEach(p => inputs[p.id] = 0);
+
+// Faturamento médio anual (últimos 5 anos) do cliente-alvo, usado pela tabela de ganhos progressiva
+// do GS Partner/GS Black (FAIXA_GANHOS) — irrelevante para os demais modelos (% fixo).
+let faturamentoClienteMedio = 0;
+function pctPorFaixa(faturamentoAnual) {
+  const faixa = FAIXA_GANHOS.find(f => faturamentoAnual <= f.ate);
+  return faixa ? faixa.pct : FAIXA_GANHOS[FAIXA_GANHOS.length - 1].pct;
+}
+function bindFaixaInput() {
+  document.getElementById('faixaFaturamentoCliente').addEventListener('input', e => {
+    faturamentoClienteMedio = Math.max(0, Number(e.target.value) || 0);
+    update();
+  });
+}
+function resetFaixaInput() {
+  faturamentoClienteMedio = 0;
+  document.getElementById('faixaFaturamentoCliente').value = '';
+}
+
+// Participantes adicionais no treinamento (além do(s) já incluso(s) em model.treinamento),
+// a R$1.500 cada, per "Política Comercial 2026".
+let participantesAdicionais = 0;
+function bindParticipantesInput() {
+  document.getElementById('participantesAdicionais').addEventListener('input', e => {
+    participantesAdicionais = Math.max(0, Math.round(Number(e.target.value) || 0));
+    update();
+  });
+}
+function resetParticipantesInput() {
+  participantesAdicionais = 0;
+  document.getElementById('participantesAdicionais').value = '0';
+}
 
 // valorVenda: preço negociado da franquia (0 = usa o valor de aquisição do modelo selecionado)
 // entrada/parcelas/juros: condições de pagamento dessa aquisição (0 parcelas = pagamento à vista)
@@ -224,10 +259,16 @@ function simulate(model) {
   const honorariosTax = zeros(), honorariosCorp = zeros();
   const faturamentoTax = zeros(), faturamentoCorp = zeros();
 
+  // GS Partner / GS Black: % de honorários é progressivo, conforme a faixa de faturamento médio
+  // (últimos 5 anos) do cliente informada pelo usuário — substitui o pctTax/pctCorporate fixo do modelo.
+  const pctFaixaAtual = model.faixaProgressiva ? pctPorFaixa(faturamentoClienteMedio) : null;
+  const pctTaxEfetivo = model.faixaProgressiva ? pctFaixaAtual : model.pctTax;
+  const pctCorporateEfetivo = model.faixaProgressiva ? pctFaixaAtual : model.pctCorporate;
+
   PRODUCTS.forEach(p => {
     const contractsYear = inputs[p.id] || 0;
     const monthlyContracts = contractsYear / 12;
-    const feePerContract = p.tkm * p.aprovacao * (p.grupo === 'tax' ? model.pctTax : model.pctCorporate);
+    const feePerContract = p.tkm * p.aprovacao * (p.grupo === 'tax' ? pctTaxEfetivo : pctCorporateEfetivo);
     const revenueClosedPerMonth = monthlyContracts * feePerContract;
     const honorariosArr = p.grupo === 'tax' ? honorariosTax : honorariosCorp;
     const faturamentoArr = p.grupo === 'tax' ? faturamentoTax : faturamentoCorp;
@@ -295,6 +336,10 @@ function simulate(model) {
     for (let m = startIdx; m < months; m++) outrasDespesas[m] += -valor;
   });
 
+  // Taxa de treinamento é cobrada por participante: model.treinamento cobre o(s) participante(s)
+  // incluso(s), cada participante adicional soma CUSTO_PARTICIPANTE_ADICIONAL.
+  const treinamentoTotal = model.treinamento + participantesAdicionais * CUSTO_PARTICIPANTE_ADICIONAL;
+
   const impostos = zeros(), royalties = zeros(), crm = zeros(), comercial = zeros();
   const funcionarios = zeros(), midia = zeros(), treinamento = zeros(), contabilidade = zeros();
   const monthlyExpense = zeros(), monthlyProfit = zeros(), cashFlow = zeros();
@@ -306,7 +351,7 @@ function simulate(model) {
     comercial[m] = -despesasComerciaisMensal;
     funcionarios[m] = -funcionariosMensal;
     midia[m] = -model.midiaMensal;
-    treinamento[m] = m === 0 ? -model.treinamento : 0;
+    treinamento[m] = m === 0 ? -treinamentoTotal : 0;
     contabilidade[m] = -CUSTO_CONTABILIDADE_MENSAL;
 
     monthlyExpense[m] = impostos[m] + royalties[m] + crm[m] + comercial[m] + funcionarios[m] + midia[m] + treinamento[m] + contabilidade[m] + financiamento[m] + outrasDespesas[m];
@@ -352,8 +397,10 @@ function simulate(model) {
     faturamentoAno1, despesasAno1, lucroAno1, lucroFinal, roi, lucratividade,
     capitalGiro, breakEvenMonth, paybackMonth,
     valorVenda, entradaFin, parcelasFin, installmentFin, jurosFin, custoTotalAquisicao,
-    investimentoInicial: entradaFin + model.treinamento,
+    investimentoInicial: entradaFin + treinamentoTotal,
+    treinamentoTotal,
     contratosSugeridos, reunioesNecessarias,
+    pctFaixaAtual, pctTaxEfetivo, pctCorporateEfetivo,
     anos: model.anos,
   };
 }
@@ -712,11 +759,11 @@ function buildPrintReport(model, r) {
     <h2>Condições do modelo</h2>
     <table>
       <tr><td>Investimento de aquisição</td><td>${brl(model.aquisicao)}</td></tr>
-      <tr><td>Taxa de treinamento</td><td>${brl(model.treinamento)}</td></tr>
+      <tr><td>Taxa de treinamento</td><td>${brl(r.treinamentoTotal)}</td></tr>
       <tr><td>Royalties mensais</td><td>${brl(model.royalties)}</td></tr>
       <tr><td>Prazo de contrato</td><td>${model.prazoTexto}</td></tr>
       <tr><td>Abrangência</td><td>${model.abrangencia}</td></tr>
-      <tr><td>% Honorários Tax / Corporate</td><td>${pct(model.pctTax)} / ${pct(model.pctCorporate)}</td></tr>
+      <tr><td>% Honorários Tax / Corporate</td><td>${model.faixaProgressiva ? `${pct(r.pctFaixaAtual)} (faixa progressiva)` : `${pct(model.pctTax)} / ${pct(model.pctCorporate)}`}</td></tr>
     </table>
 
     <h2>Contratos/ano informados na simulação</h2>
@@ -772,6 +819,12 @@ function update() {
   if (assSugestao) {
     assSugestao.textContent = `Projeção: ${Math.round(r.contratosSugeridos)} contratos/ano (${Math.round(r.reunioesNecessarias)} reuniões necessárias)`;
   }
+  const faixaResultado = document.getElementById('faixaResultado');
+  if (faixaResultado) {
+    faixaResultado.textContent = model.faixaProgressiva
+      ? `% de honorários aplicado: ${pct(r.pctFaixaAtual)} (faixa progressiva)`
+      : `${model.nome} usa % fixo — faixa progressiva só se aplica a GS Partner/GS Black`;
+  }
 }
 
 document.getElementById('resetBtn').addEventListener('click', () => {
@@ -780,6 +833,8 @@ document.getElementById('resetBtn').addEventListener('click', () => {
   resetFinancingInputs();
   resetAssessmentInputs();
   resetCustomExpenses();
+  resetFaixaInput();
+  resetParticipantesInput();
   update();
 });
 
@@ -808,6 +863,8 @@ renderModelPills();
 renderFieldGroups();
 bindFinancingInputs();
 bindAssessmentInputs();
+bindFaixaInput();
+bindParticipantesInput();
 renderCustomExpenses();
 initTabs();
 update();
