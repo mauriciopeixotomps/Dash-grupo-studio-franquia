@@ -350,9 +350,12 @@ function simulate(model) {
   // (DRE Financeiro!B17 = IF(Simulador!C21="SIM",7000,0)), não o modelo escolhido.
   const funcionariosMensal = assessment.vendedor ? CUSTO_FUNCIONARIO_MENSAL : 0;
 
-  // Sugestão de contratos/ano com base no assessment (Simulador!G9 da planilha-fonte) — puramente
-  // informativa, não altera os contratos projetados preenchidos manualmente abaixo.
-  const scoreAssessment = (assessment.horas >= 8 ? 1 : 0.5)
+  // Sugestão de contratos/ano com base no assessment — puramente informativa, não altera os
+  // contratos projetados preenchidos manualmente abaixo. O termo de horas substitui o corte binário
+  // original da planilha-fonte (>=8h = 1 ponto fixo) por uma escala contínua: cada hora semanal
+  // dedicada rende horas/REUNIOES_POR_CONTRATO "contratos" por mês (ex.: 40h/semana ÷ 20 reuniões
+  // por contrato = 2 contratos/mês), então x12 no final para o total do ano.
+  const scoreAssessment = (assessment.horas / REUNIOES_POR_CONTRATO)
     + (assessment.parceria ? 0.5 : 0)
     + (assessment.vendedor ? 1 : 0)
     + (assessment.carteira ? 0.5 : 0)
