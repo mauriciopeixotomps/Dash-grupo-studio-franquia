@@ -800,6 +800,27 @@ function renderFluxoTable(r) {
   `;
 }
 
+// Agrega os meses em totais por ano (Ano 1..Ano N), usado só no resumo anual do PDF exportado —
+// a tabela mensal completa (fluxoRowsHtml) tem colunas demais (até 120 meses) pra caber impressa.
+function yearlyTotals(arr, anos) {
+  const out = [];
+  for (let y = 0; y < anos; y++) out.push(arr.slice(y * 12, y * 12 + 12).reduce((a, b) => a + b, 0));
+  return out;
+}
+function yearlyEndValues(arr, anos) {
+  const out = [];
+  for (let y = 0; y < anos; y++) out.push(arr[y * 12 + 11]);
+  return out;
+}
+function printYearlyTableHtml(r) {
+  const headers = Array.from({ length: r.anos }, (_, i) => `Ano ${i + 1}`);
+  const rows = dreDataRow('Faturamento', yearlyTotals(r.monthlyRevenue, r.anos), { rowClass: 'total-row', colorize: true })
+    + dreDataRow('Despesas', yearlyTotals(r.monthlyExpense, r.anos), { rowClass: 'total-row', colorize: true })
+    + dreDataRow('Lucro', yearlyTotals(r.monthlyProfit, r.anos), { rowClass: 'hero-row', colorize: true })
+    + dreDataRow('Caixa acumulado (fim do ano)', yearlyEndValues(r.cashFlow, r.anos), { rowClass: 'hero-row', colorize: true, showTotal: false });
+  return `<div class="p-yearly">${dreTableHtml(rows, headers, 'Total Contrato')}</div>`;
+}
+
 // ---------- Print Report (export) ----------
 function buildPrintReport(model, r) {
   const host = document.getElementById('printReport');
@@ -845,10 +866,13 @@ function buildPrintReport(model, r) {
     <h2>Resultado projetado — Ano 1 e vigência do contrato</h2>
     <div class="p-stat-grid">${statsRows}</div>
 
-    <h2>Fluxo de caixa acumulado — Ano 1</h2>
+    <h2>Fluxo de caixa acumulado — ${periodoLabel(r.anos * 12).replace('— ', '')}</h2>
     ${chartSvg}
 
-    <h2>DRE Financeiro — Ano 1</h2>
+    <h2>Resultado por ano — Ano 1 a Ano ${r.anos}</h2>
+    ${printYearlyTableHtml(r)}
+
+    <h2>DRE Financeiro — Ano 1 (detalhado mês a mês)</h2>
     <div class="p-dre">${document.getElementById('dreTable').innerHTML}</div>
 
     <p class="p-disclaimer">
