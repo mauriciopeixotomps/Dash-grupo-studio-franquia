@@ -839,16 +839,27 @@ function printYearlyTableHtml(r) {
 
 // ---------- Comparativo entre modalidades ----------
 // Roda a MESMA simulação (contratos, assessment, financiamento e demais premissas informados)
-// em cada um dos modelos, para comparar lado a lado indicadores, lucro por ano e caixa acumulado.
-// O comparativo é separado por linha de negócio: "fiscal" (TAX/PLATINUM/CORPORATE/GS Partner/GS Black)
-// e "agro" (Studio Agro Tax/Platinum/Corporate) — não faz sentido comparar linhas diferentes na mesma tabela.
-function comparativoResults(linha) {
-  return MODELS.filter(m => (m.linha || 'fiscal') === linha).map(m => ({ model: m, r: simulate(m) }));
+// em cada modelo relevante, para comparar lado a lado indicadores, lucro por ano e caixa acumulado.
+// O conjunto comparado depende do modelo selecionado:
+//   - Fiscal (TAX/PLATINUM/CORPORATE)  -> Tax, Platinum, Corporate, GS Partner, GS Black
+//   - Agro (Studio Agro Tax/Plat/Corp) -> Agro Tax, Agro Platinum, Agro Corporate, GS Partner, GS Black
+//   - GS Partner ou GS Black           -> só GS Partner x GS Black
+function comparativoModelIds() {
+  const sel = MODELS.find(m => m.id === selectedModelId) || {};
+  if (sel.id === 'GS_PARTNER' || sel.id === 'GS_BLACK') return ['GS_PARTNER', 'GS_BLACK'];
+  if ((sel.linha || 'fiscal') === 'agro') return ['AGRO_TAX', 'AGRO_PLATINUM', 'AGRO_CORPORATE', 'GS_PARTNER', 'GS_BLACK'];
+  return ['TAX', 'PLATINUM', 'CORPORATE', 'GS_PARTNER', 'GS_BLACK'];
 }
-const LINHAS_COMPARATIVO = [
-  { key: 'fiscal', titulo: 'Studio Fiscal' },
-  { key: 'agro', titulo: 'Studio Agro' },
-];
+function comparativoResults() {
+  const byId = Object.fromEntries(MODELS.map(m => [m.id, m]));
+  return comparativoModelIds().filter(id => byId[id]).map(id => ({ model: byId[id], r: simulate(byId[id]) }));
+}
+function comparativoContexto() {
+  const sel = MODELS.find(m => m.id === selectedModelId) || {};
+  if (sel.id === 'GS_PARTNER' || sel.id === 'GS_BLACK') return 'Comparando <strong>GS Partner</strong> e <strong>GS Black</strong>';
+  if ((sel.linha || 'fiscal') === 'agro') return `Comparando <strong>${sel.nome}</strong> com a linha Studio Agro (Tax, Platinum e Corporate) e com GS Partner e GS Black`;
+  return `Comparando <strong>${sel.nome}</strong> com a linha Studio Fiscal (Tax, Platinum e Corporate) e com GS Partner e GS Black`;
+}
 function comparativoYearCells(values, maxAnos, opts) {
   opts = opts || {};
   let out = '';
@@ -903,10 +914,12 @@ function comparativoAnualTable(all, arrKey, aggFn, totalize) {
     <tbody>${rows}</tbody>
   </table>`;
 }
-function comparativoSecaoHtml(linha) {
-  const all = comparativoResults(linha);
-  if (!all.length) return '';
-  return `
+function renderComparativo() {
+  const host = document.getElementById('comparativoContent');
+  if (!host) return;
+  const all = comparativoResults();
+  host.innerHTML = `
+    <p class="comp-note">${comparativoContexto()}. Todos os modelos usam <strong>exatamente os mesmos contratos, premissas de assessment e condições de financiamento</strong> que você preencheu na aba Simulador. A linha destacada é o modelo em edição.</p>
     <div class="data-box comp-box">
       <h5>Indicadores por modalidade</h5>
       <div class="dre-scroll">${comparativoIndicadoresTable(all)}</div>
@@ -921,38 +934,16 @@ function comparativoSecaoHtml(linha) {
     </div>
   `;
 }
-function renderComparativo() {
-  const host = document.getElementById('comparativoContent');
-  if (!host) return;
-  const selModel = MODELS.find(m => m.id === selectedModelId) || {};
-  const selLinha = selModel.linha || 'fiscal';
-  host.innerHTML = `
-    <p class="comp-note">Cada linha de negócio é comparada separadamente. Todos os modelos usam <strong>exatamente os mesmos contratos, premissas de assessment e condições de financiamento</strong> que você preencheu na aba Simulador. A linha destacada é o modelo em edição (<strong>${selModel.nome || ''}</strong>).</p>
-    ${LINHAS_COMPARATIVO.map(l => `
-      <h3 class="comp-linha-head${l.key === selLinha ? ' comp-linha-atual' : ''}">${l.titulo}</h3>
-      ${comparativoSecaoHtml(l.key)}
-    `).join('')}
-  `;
-}
-function printComparativoSecaoHtml(linha) {
-  const all = comparativoResults(linha);
-  if (!all.length) return '';
-  return `
-    <div class="p-comp">${comparativoIndicadoresTable(all)}</div>
-    <h4 style="font-size:0.78rem;color:#927245;margin:12px 0 5px;">Lucro por ano</h4>
-    <div class="p-comp">${comparativoAnualTable(all, 'monthlyProfit', yearlyTotals, true)}</div>
-    <h4 style="font-size:0.78rem;color:#927245;margin:12px 0 5px;">Caixa acumulado (fim de cada ano)</h4>
-    <div class="p-comp">${comparativoAnualTable(all, 'cashFlow', yearlyEndValues, false)}</div>
-  `;
-}
 function printComparativoHtml() {
+  const all = comparativoResults();
   return `
     <h2>Comparativo entre modalidades</h2>
-    <p style="color:#555;font-size:0.8rem;margin:0 0 8px;">Mesmos contratos e premissas da simulação, aplicados a cada modelo. Studio Fiscal e Studio Agro são comparados separadamente.</p>
-    ${LINHAS_COMPARATIVO.map(l => `
-      <h3 style="font-size:0.9rem;color:#1F1F1F;margin:16px 0 8px;border-bottom:1px solid #ddd;padding-bottom:4px;">${l.titulo}</h3>
-      ${printComparativoSecaoHtml(l.key)}
-    `).join('')}
+    <p style="color:#555;font-size:0.8rem;margin:0 0 8px;">${comparativoContexto().replace(/<\/?strong>/g, '')} — mesmos contratos e premissas da simulação em cada modelo.</p>
+    <div class="p-comp">${comparativoIndicadoresTable(all)}</div>
+    <h3 style="font-size:0.82rem;color:#927245;margin:14px 0 6px;">Lucro por ano</h3>
+    <div class="p-comp">${comparativoAnualTable(all, 'monthlyProfit', yearlyTotals, true)}</div>
+    <h3 style="font-size:0.82rem;color:#927245;margin:14px 0 6px;">Caixa acumulado (fim de cada ano)</h3>
+    <div class="p-comp">${comparativoAnualTable(all, 'cashFlow', yearlyEndValues, false)}</div>
   `;
 }
 
