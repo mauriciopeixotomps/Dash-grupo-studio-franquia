@@ -321,8 +321,11 @@ function simulate(model) {
     return pctCorporateEfetivo;
   };
 
-  // Ramp-up: só começa a fechar contrato (e portanto a gerar honorários/faturamento) no 5º mês.
-  const inicioReceitaIdx = Math.min(months - 1, Math.max(0, INICIO_RECEITA_MES - 1));
+  // Ramp-up: o 1º contrato só fecha no mês INICIO_HONORARIO_MES (honorários/competência começam
+  // aí). O faturamento (caixa) segue o prazo de cada produto a partir do fechamento e nunca aparece
+  // antes de INICIO_FATURAMENTO_MES.
+  const inicioHonorarioIdx = Math.min(months - 1, Math.max(0, INICIO_HONORARIO_MES - 1));
+  const inicioFaturamentoIdx = Math.min(months - 1, Math.max(0, INICIO_FATURAMENTO_MES - 1));
 
   PRODUCTS.forEach(p => {
     const contractsYear = inputs[p.id] || 0;
@@ -332,14 +335,14 @@ function simulate(model) {
     const honorariosArr = p.grupo === 'tax' ? honorariosTax : honorariosCorp;
     const faturamentoArr = p.grupo === 'tax' ? faturamentoTax : faturamentoCorp;
 
-    for (let m = inicioReceitaIdx; m < months; m++) honorariosArr[m] += revenueClosedPerMonth;
+    for (let m = inicioHonorarioIdx; m < months; m++) honorariosArr[m] += revenueClosedPerMonth;
 
     const perInstallment = p.parcelas > 0 ? revenueClosedPerMonth / p.parcelas : 0;
-    for (let closeMonth = inicioReceitaIdx; closeMonth < months; closeMonth++) {
+    for (let closeMonth = inicioHonorarioIdx; closeMonth < months; closeMonth++) {
       const start = closeMonth + p.tempo;
       for (let k = 0; k < p.parcelas; k++) {
         const payMonth = start + k;
-        if (payMonth < months) faturamentoArr[payMonth] += perInstallment;
+        if (payMonth >= inicioFaturamentoIdx && payMonth < months) faturamentoArr[payMonth] += perInstallment;
       }
     }
   });
@@ -987,7 +990,8 @@ function buildPrintReport(model, r) {
       <tr><td>Prazo de contrato</td><td>${model.prazoTexto}</td></tr>
       <tr><td>Abrangência</td><td>${model.abrangencia}</td></tr>
       <tr><td>% Honorários Tax / Corporate</td><td>${model.faixaProgressiva ? `${pct(r.pctFaixaAtual)} (faixa progressiva)` : `${pct(model.pctTax)} / ${pct(model.pctCorporate)}`}</td></tr>
-      <tr><td>Início da geração de receita</td><td>Mês ${INICIO_RECEITA_MES} (ramp-up de ${INICIO_RECEITA_MES - 1} meses)</td></tr>
+      <tr><td>Início dos honorários (competência)</td><td>Mês ${INICIO_HONORARIO_MES} — abril</td></tr>
+      <tr><td>Início do faturamento (caixa)</td><td>Mês ${INICIO_FATURAMENTO_MES} — maio</td></tr>
     </table>
 
     <h2>Contratos/ano informados na simulação</h2>
