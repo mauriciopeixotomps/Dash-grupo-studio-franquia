@@ -63,6 +63,7 @@ const MODELS = [
   },
   {
     id: 'AGRO_TAX',
+    linha: 'agro',
     nome: 'Studio Agro TAX',
     aquisicao: 35000,
     royalties: 1500,
@@ -82,6 +83,7 @@ const MODELS = [
   },
   {
     id: 'AGRO_PLATINUM',
+    linha: 'agro',
     nome: 'Studio Agro Platinum',
     aquisicao: 50000,
     royalties: 1500,
@@ -101,6 +103,7 @@ const MODELS = [
   },
   {
     id: 'AGRO_CORPORATE',
+    linha: 'agro',
     nome: 'Studio Agro Corporate',
     aquisicao: 90000,
     royalties: 1500,

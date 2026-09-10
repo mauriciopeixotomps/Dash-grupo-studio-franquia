@@ -350,6 +350,14 @@ table.dre-table th.year-head{text-align:center;background:var(--surface-alt);col
 
 /* COMPARATIVO */
 .comp-note{font-size:0.82rem;color:var(--text-muted);line-height:1.6;margin:0 0 16px;}
+.comp-linha-head{
+  font-size:1.05rem;color:var(--grafite);margin:28px 0 12px;padding-bottom:6px;
+  border-bottom:2px solid var(--bronze);font-weight:700;
+}
+.comp-linha-head:first-of-type{margin-top:4px;}
+.comp-linha-head.comp-linha-atual::after{
+  content:" · modelo em edição";font-size:0.7rem;color:var(--bronze);font-weight:600;text-transform:uppercase;letter-spacing:0.5px;
+}
 .comp-box{margin-bottom:20px;}
 .comp-box h5{margin:0 0 12px;font-size:0.8rem;color:var(--grafite);font-weight:700;text-transform:uppercase;letter-spacing:0.6px;}
 table.comp-table td.label, table.comp-table th.label{min-width:150px;}
@@ -655,7 +663,7 @@ footer img{height:26px;opacity:0.6;margin-bottom:14px;}
 
 <div id="printReport"></div>
 
-<script src="data.js?v=1789068948"></script>
-<script src="app.js?v=1789068948"></script>
+<script src="data.js?v=1789069378"></script>
+<script src="app.js?v=1789069378"></script>
 </body>
 </html>
