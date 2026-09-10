@@ -321,6 +321,9 @@ function simulate(model) {
     return pctCorporateEfetivo;
   };
 
+  // Ramp-up: só começa a fechar contrato (e portanto a gerar honorários/faturamento) no 5º mês.
+  const inicioReceitaIdx = Math.min(months - 1, Math.max(0, INICIO_RECEITA_MES - 1));
+
   PRODUCTS.forEach(p => {
     const contractsYear = inputs[p.id] || 0;
     const monthlyContracts = contractsYear / 12;
@@ -329,10 +332,10 @@ function simulate(model) {
     const honorariosArr = p.grupo === 'tax' ? honorariosTax : honorariosCorp;
     const faturamentoArr = p.grupo === 'tax' ? faturamentoTax : faturamentoCorp;
 
-    for (let m = 0; m < months; m++) honorariosArr[m] += revenueClosedPerMonth;
+    for (let m = inicioReceitaIdx; m < months; m++) honorariosArr[m] += revenueClosedPerMonth;
 
     const perInstallment = p.parcelas > 0 ? revenueClosedPerMonth / p.parcelas : 0;
-    for (let closeMonth = 0; closeMonth < months; closeMonth++) {
+    for (let closeMonth = inicioReceitaIdx; closeMonth < months; closeMonth++) {
       const start = closeMonth + p.tempo;
       for (let k = 0; k < p.parcelas; k++) {
         const payMonth = start + k;
@@ -346,9 +349,13 @@ function simulate(model) {
 
   const totalContratosAno = Object.values(inputs).reduce((a, b) => a + b, 0);
   const despesasComerciaisMensal = (totalContratosAno * REUNIOES_POR_CONTRATO * CUSTO_POR_REUNIAO) / 12;
-  // "Vendedor focado" (assessment) é o driver real do custo de equipe na planilha-fonte
-  // (DRE Financeiro!B17 = IF(Simulador!C21="SIM",7000,0)), não o modelo escolhido.
-  const funcionariosMensal = assessment.vendedor ? CUSTO_FUNCIONARIO_MENSAL : 0;
+  // "Vendedor focado" (assessment) é o driver de equipe da planilha-fonte (DRE!B17 = IF(C21="SIM",7000,0)).
+  // GS Partner tem 1 funcionário OBRIGATÓRIO com despesa mínima de R$8.000/mês — o piso do modelo
+  // prevalece quando é maior que o custo do vendedor focado (não somam: é sempre "pelo menos 1").
+  const funcionariosMensal = Math.max(
+    assessment.vendedor ? CUSTO_FUNCIONARIO_MENSAL : 0,
+    model.funcionarioObrigatorioMin || 0
+  );
 
   // Sugestão de contratos/ano com base no assessment — puramente informativa, não altera os
   // contratos projetados preenchidos manualmente abaixo. O termo de horas substitui o corte binário
@@ -409,6 +416,14 @@ function simulate(model) {
     for (let m = startIdx; m < months; m++) outrasDespesas[m] += -valor;
   });
 
+  // Projeto arquitetônico obrigatório (GS Partner): valor total parcelado em N meses a partir do mês 1.
+  const projetoArq = zeros();
+  if (model.projetoArquitetonico) {
+    const nParc = Math.min(months, model.projetoArquitetonicoParcelas || 12);
+    const parcelaArq = model.projetoArquitetonico / nParc;
+    for (let k = 0; k < nParc; k++) projetoArq[k] += -parcelaArq;
+  }
+
   // Taxa de treinamento é cobrada por participante: model.treinamento cobre o(s) participante(s)
   // incluso(s), cada participante adicional soma CUSTO_PARTICIPANTE_ADICIONAL.
   const treinamentoTotal = model.treinamento + participantesAdicionais * CUSTO_PARTICIPANTE_ADICIONAL;
@@ -427,7 +442,7 @@ function simulate(model) {
     treinamento[m] = m === 0 ? -treinamentoTotal : 0;
     contabilidade[m] = -CUSTO_CONTABILIDADE_MENSAL;
 
-    monthlyExpense[m] = impostos[m] + royalties[m] + crm[m] + comercial[m] + funcionarios[m] + midia[m] + treinamento[m] + contabilidade[m] + financiamento[m] + outrasDespesas[m];
+    monthlyExpense[m] = impostos[m] + royalties[m] + crm[m] + comercial[m] + funcionarios[m] + midia[m] + treinamento[m] + contabilidade[m] + financiamento[m] + outrasDespesas[m] + projetoArq[m];
     monthlyProfit[m] = monthlyRevenue[m] + monthlyExpense[m];
     cashFlow[m] = (m === 0 ? 0 : cashFlow[m - 1]) + monthlyProfit[m];
   }
@@ -465,7 +480,7 @@ function simulate(model) {
   return {
     honorariosTax, honorariosCorp, honorariosTotal,
     faturamentoTax, faturamentoCorp, monthlyRevenue,
-    impostos, royalties, crm, comercial, funcionarios, midia, treinamento, contabilidade, financiamento, outrasDespesas,
+    impostos, royalties, crm, comercial, funcionarios, midia, treinamento, contabilidade, financiamento, outrasDespesas, projetoArq,
     monthlyExpense, monthlyProfit, cashFlow,
     faturamentoAno1, despesasAno1, lucroAno1, lucroFinal, roi, lucratividade,
     capitalGiro, breakEvenMonth, paybackMonth,
@@ -754,6 +769,7 @@ function dreRowsHtml(r) {
   html += dataRow('Treinamento', r.treinamento, { colorize: true });
   html += dataRow('Contabilidade', r.contabilidade, { colorize: true });
   html += dataRow('Aquisição da franquia (entrada + parcelas)', r.financiamento, { colorize: true });
+  html += dataRow('Projeto arquitetônico (12x)', r.projetoArq, { colorize: true });
   html += dataRow('Despesas adicionais', r.outrasDespesas, { colorize: true });
   html += dataRow('Total Despesas', r.monthlyExpense, { rowClass: 'total-row', colorize: true });
 
@@ -821,6 +837,101 @@ function printYearlyTableHtml(r) {
   return `<div class="p-yearly">${dreTableHtml(rows, headers, 'Total Contrato')}</div>`;
 }
 
+// ---------- Comparativo entre modalidades ----------
+// Roda a MESMA simulação (contratos, assessment, financiamento e demais premissas informados)
+// em cada um dos modelos, para comparar lado a lado indicadores, lucro por ano e caixa acumulado.
+function comparativoResults() {
+  return MODELS.map(m => ({ model: m, r: simulate(m) }));
+}
+function comparativoYearCells(values, maxAnos, opts) {
+  opts = opts || {};
+  let out = '';
+  for (let y = 0; y < maxAnos; y++) {
+    if (y < values.length) {
+      const v = values[y];
+      out += `<td class="${opts.colorize ? signCls(v) : ''}">${brl(v)}</td>`;
+    } else {
+      out += '<td class="comp-empty">—</td>';
+    }
+  }
+  return out;
+}
+function comparativoIndicadoresTable(all) {
+  const rows = all.map(({ model, r }) => {
+    const active = model.id === selectedModelId ? ' class="comp-active"' : '';
+    return `<tr${active}>
+      <td class="label">${model.nome}</td>
+      <td>${model.prazoTexto}</td>
+      <td class="${signCls(-r.investimentoInicial)}">${brl(-r.investimentoInicial)}</td>
+      <td class="${signCls(r.faturamentoAno1)}">${brl(r.faturamentoAno1)}</td>
+      <td class="${signCls(r.lucroAno1)}">${brl(r.lucroAno1)}</td>
+      <td class="${signCls(r.lucroFinal)}">${brl(r.lucroFinal)}</td>
+      <td class="${signCls(r.roi)}">${r.roi.toFixed(1)}x</td>
+      <td>${r.breakEvenMonth ? 'Mês ' + r.breakEvenMonth : '—'}</td>
+      <td>${r.paybackMonth ? 'Mês ' + r.paybackMonth : '—'}</td>
+      <td class="${signCls(r.lucratividade)}">${pct(r.lucratividade)}</td>
+    </tr>`;
+  }).join('');
+  return `<table class="dre-table comp-table">
+    <thead><tr>
+      <th class="label">Modelo</th><th>Prazo</th><th>Investimento inicial</th>
+      <th>Faturamento Ano 1</th><th>Lucro Ano 1</th><th>Lucro final do contrato</th>
+      <th>ROI</th><th>Breakeven</th><th>Payback</th><th>Lucratividade Ano 1</th>
+    </tr></thead>
+    <tbody>${rows}</tbody>
+  </table>`;
+}
+function comparativoAnualTable(all, maxAnos, arrKey, aggFn, totalize) {
+  const headerCols = Array.from({ length: maxAnos }, (_, i) => `<th>Ano ${i + 1}</th>`).join('');
+  const rows = all.map(({ model, r }) => {
+    const active = model.id === selectedModelId ? ' class="comp-active"' : '';
+    const vals = aggFn(r[arrKey], model.anos);
+    const totalCell = totalize
+      ? `<td class="total-col ${signCls(vals.reduce((a, b) => a + b, 0))}">${brl(vals.reduce((a, b) => a + b, 0))}</td>`
+      : '<td class="total-col"></td>';
+    return `<tr${active}><td class="label">${model.nome}</td>${comparativoYearCells(vals, maxAnos, { colorize: true })}${totalCell}</tr>`;
+  }).join('');
+  return `<table class="dre-table comp-table">
+    <thead><tr><th class="label">Modelo</th>${headerCols}<th class="total-col">${totalize ? 'Total contrato' : 'Final'}</th></tr></thead>
+    <tbody>${rows}</tbody>
+  </table>`;
+}
+function renderComparativo() {
+  const host = document.getElementById('comparativoContent');
+  if (!host) return;
+  const all = comparativoResults();
+  const maxAnos = Math.max(...MODELS.map(m => m.anos));
+  const selNome = (MODELS.find(m => m.id === selectedModelId) || {}).nome || '';
+  host.innerHTML = `
+    <p class="comp-note">Todos os modelos abaixo usam <strong>exatamente os mesmos contratos, premissas de assessment e condições de financiamento</strong> que você preencheu na aba Simulador. A linha destacada é o modelo em edição (<strong>${selNome}</strong>).</p>
+    <div class="data-box comp-box">
+      <h5>Indicadores por modalidade</h5>
+      <div class="dre-scroll">${comparativoIndicadoresTable(all)}</div>
+    </div>
+    <div class="data-box comp-box">
+      <h5>Lucro por ano</h5>
+      <div class="dre-scroll">${comparativoAnualTable(all, maxAnos, 'monthlyProfit', yearlyTotals, true)}</div>
+    </div>
+    <div class="data-box comp-box">
+      <h5>Caixa acumulado (fim de cada ano)</h5>
+      <div class="dre-scroll">${comparativoAnualTable(all, maxAnos, 'cashFlow', yearlyEndValues, false)}</div>
+    </div>
+  `;
+}
+function printComparativoHtml() {
+  const all = comparativoResults();
+  const maxAnos = Math.max(...MODELS.map(m => m.anos));
+  return `
+    <h2>Comparativo entre modalidades</h2>
+    <p style="color:#555;font-size:0.8rem;margin:0 0 8px;">Mesmos contratos e premissas da simulação, aplicados a cada modelo de franquia.</p>
+    <div class="p-comp">${comparativoIndicadoresTable(all)}</div>
+    <h3 style="font-size:0.82rem;color:#927245;margin:14px 0 6px;">Lucro por ano</h3>
+    <div class="p-comp">${comparativoAnualTable(all, maxAnos, 'monthlyProfit', yearlyTotals, true)}</div>
+    <h3 style="font-size:0.82rem;color:#927245;margin:14px 0 6px;">Caixa acumulado (fim de cada ano)</h3>
+    <div class="p-comp">${comparativoAnualTable(all, maxAnos, 'cashFlow', yearlyEndValues, false)}</div>
+  `;
+}
+
 // ---------- Print Report (export) ----------
 function buildPrintReport(model, r) {
   const host = document.getElementById('printReport');
@@ -855,9 +966,13 @@ function buildPrintReport(model, r) {
       <tr><td>Investimento de aquisição</td><td>${brl(model.aquisicao)}</td></tr>
       <tr><td>Taxa de treinamento</td><td>${brl(r.treinamentoTotal)}</td></tr>
       <tr><td>Royalties mensais</td><td>${brl(model.royalties)}</td></tr>
+      ${model.midiaMensal ? `<tr><td>Investimento em mídia (mensal)</td><td>${brl(model.midiaMensal)}</td></tr>` : ''}
+      ${model.projetoArquitetonico ? `<tr><td>Projeto arquitetônico (${model.projetoArquitetonicoParcelas || 12}x)</td><td>${brl(model.projetoArquitetonico)}</td></tr>` : ''}
+      ${model.funcionarioObrigatorioMin ? `<tr><td>Funcionário obrigatório (mínimo mensal)</td><td>${brl(model.funcionarioObrigatorioMin)}</td></tr>` : ''}
       <tr><td>Prazo de contrato</td><td>${model.prazoTexto}</td></tr>
       <tr><td>Abrangência</td><td>${model.abrangencia}</td></tr>
       <tr><td>% Honorários Tax / Corporate</td><td>${model.faixaProgressiva ? `${pct(r.pctFaixaAtual)} (faixa progressiva)` : `${pct(model.pctTax)} / ${pct(model.pctCorporate)}`}</td></tr>
+      <tr><td>Início da geração de receita</td><td>Mês ${INICIO_RECEITA_MES} (ramp-up de ${INICIO_RECEITA_MES - 1} meses)</td></tr>
     </table>
 
     <h2>Contratos/ano informados na simulação</h2>
@@ -874,6 +989,8 @@ function buildPrintReport(model, r) {
 
     <h2>DRE Financeiro — Ano 1 (detalhado mês a mês)</h2>
     <div class="p-dre">${document.getElementById('dreTable').innerHTML}</div>
+
+    ${printComparativoHtml()}
 
     <p class="p-disclaimer">
       Simulação ilustrativa baseada nas premissas do planejamento financeiro do franqueado Grupo Studio (ticket médio de honorários,
@@ -904,6 +1021,7 @@ function update() {
   renderFlowChart(r, { hostId: 'chartHostFluxo', legendId: 'chartLegendFluxo', titleId: 'chartTitleFluxo', titlePrefix: 'Receita, despesa, lucro e caixa acumulado' });
   renderDRE(r);
   renderFluxoTable(r);
+  renderComparativo();
   const finPlaceholder = document.getElementById('finValorVenda');
   if (finPlaceholder) finPlaceholder.placeholder = brl(model.aquisicao);
   const finParcelaValor = document.getElementById('finParcelaValor');

@@ -139,7 +139,12 @@ const MODELS = [
     consultasPJ: 200,
     midiaMensal: 3000,
     equipeDedicada: true,
-    nota: 'Honorários de 35% a 60%, conforme a faixa de faturamento médio (últimos 5 anos) do cliente. Investimento obrigatório em mídia de R$3.000/mês.',
+    // GS Partner: 1 funcionário é obrigatório nessa categoria — despesa mínima de R$8.000/mês.
+    funcionarioObrigatorioMin: 8000,
+    // GS Partner: projeto arquitetônico obrigatório de R$50.000, parcelado em 12x.
+    projetoArquitetonico: 50000,
+    projetoArquitetonicoParcelas: 12,
+    nota: 'Honorários de 35% a 60%, conforme a faixa de faturamento médio (últimos 5 anos) do cliente. Investimento obrigatório em mídia de R$3.000/mês, projeto arquitetônico de R$50.000 (12x) e 1 funcionário (mín. R$8.000/mês).',
   },
   {
     id: 'GS_BLACK',
@@ -191,6 +196,10 @@ const CUSTO_FUNCIONARIO_MENSAL = 7000;
 const IMPOSTOS_PCT = 0.065;
 const CUSTO_POR_REUNIAO = 40;
 const REUNIOES_POR_CONTRATO = 20;
+
+// A unidade leva ~4 meses de ramp-up antes de fechar o 1º contrato — a geração de receita
+// (honorários e faturamento) começa a partir do 5º mês do contrato.
+const INICIO_RECEITA_MES = 5;
 
 // Taxa de treinamento (aba "Política Comercial 2026") é cobrada por participante: o valor em
 // model.treinamento já cobre o(s) participante(s) inclusos; cada participante ADICIONAL soma este valor.
