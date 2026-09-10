@@ -321,9 +321,10 @@ function simulate(model) {
     return pctCorporateEfetivo;
   };
 
-  // Ramp-up: o 1º contrato só fecha no mês INICIO_HONORARIO_MES (honorários/competência começam
-  // aí). O faturamento (caixa) segue o prazo de cada produto a partir do fechamento e nunca aparece
-  // antes de INICIO_FATURAMENTO_MES.
+  // Ramp-up: os honorários (competência) só aparecem na DRE a partir de INICIO_HONORARIO_MES.
+  // O faturamento (caixa) segue o prazo de cada produto (meses até a 1ª parcela) contado do
+  // fechamento, mas o começo da coleta de cada contrato tem um piso em INICIO_FATURAMENTO_MES —
+  // ou seja, nenhum recebimento antes desse mês.
   const inicioHonorarioIdx = Math.min(months - 1, Math.max(0, INICIO_HONORARIO_MES - 1));
   const inicioFaturamentoIdx = Math.min(months - 1, Math.max(0, INICIO_FATURAMENTO_MES - 1));
 
@@ -338,11 +339,11 @@ function simulate(model) {
     for (let m = inicioHonorarioIdx; m < months; m++) honorariosArr[m] += revenueClosedPerMonth;
 
     const perInstallment = p.parcelas > 0 ? revenueClosedPerMonth / p.parcelas : 0;
-    for (let closeMonth = inicioHonorarioIdx; closeMonth < months; closeMonth++) {
-      const start = closeMonth + p.tempo;
+    for (let closeMonth = 0; closeMonth < months; closeMonth++) {
+      const start = Math.max(inicioFaturamentoIdx, closeMonth + p.tempo);
       for (let k = 0; k < p.parcelas; k++) {
         const payMonth = start + k;
-        if (payMonth >= inicioFaturamentoIdx && payMonth < months) faturamentoArr[payMonth] += perInstallment;
+        if (payMonth < months) faturamentoArr[payMonth] += perInstallment;
       }
     }
   });
@@ -990,8 +991,8 @@ function buildPrintReport(model, r) {
       <tr><td>Prazo de contrato</td><td>${model.prazoTexto}</td></tr>
       <tr><td>Abrangência</td><td>${model.abrangencia}</td></tr>
       <tr><td>% Honorários Tax / Corporate</td><td>${model.faixaProgressiva ? `${pct(r.pctFaixaAtual)} (faixa progressiva)` : `${pct(model.pctTax)} / ${pct(model.pctCorporate)}`}</td></tr>
-      <tr><td>Início dos honorários (competência)</td><td>Mês ${INICIO_HONORARIO_MES} — abril</td></tr>
-      <tr><td>Início do faturamento (caixa)</td><td>Mês ${INICIO_FATURAMENTO_MES} — maio</td></tr>
+      <tr><td>Início dos honorários (competência)</td><td>${MESES[Math.min(11, INICIO_HONORARIO_MES - 1)] || ('Mês ' + INICIO_HONORARIO_MES)}</td></tr>
+      <tr><td>Início do faturamento (caixa)</td><td>A partir de ${MESES[Math.min(11, INICIO_FATURAMENTO_MES - 1)] || ('Mês ' + INICIO_FATURAMENTO_MES)}</td></tr>
     </table>
 
     <h2>Contratos/ano informados na simulação</h2>

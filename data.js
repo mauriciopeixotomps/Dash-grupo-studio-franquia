@@ -200,9 +200,10 @@ const IMPOSTOS_PCT = 0.065;
 const CUSTO_POR_REUNIAO = 40;
 const REUNIOES_POR_CONTRATO = 20;
 
-// Ramp-up da unidade: o 1º contrato fecha no mês 4 (abril) — honorários (competência) começam aí.
-// O faturamento (caixa) nunca aparece antes do mês 5 (maio).
-const INICIO_HONORARIO_MES = 4;
+// Ramp-up da unidade: o 1º contrato fecha no mês 2 (fevereiro) — honorários (competência) começam aí.
+// O faturamento (caixa) só aparece a partir do mês 5 (maio); cada produto respeita o próprio
+// "meses até a 1ª parcela" a partir do fechamento, mas com esse piso de maio.
+const INICIO_HONORARIO_MES = 2;
 const INICIO_FATURAMENTO_MES = 5;
 
 // Taxa de treinamento (aba "Política Comercial 2026") é cobrada por participante: o valor em
