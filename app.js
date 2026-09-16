@@ -192,6 +192,21 @@ function resetFinancingInputs() {
   updateFormaPagamentoUI();
 }
 
+// Investimento em mídia mensal da Rede de Parceiros (GS Partner): editável para permitir simular
+// cenários de mídia diferentes do padrão do modelo (model.midiaMensal) e ver o efeito no funil de
+// parceiros/contratos e no Comparativo. 0 = usa o valor padrão do modelo selecionado.
+let midiaMensalManual = 0;
+function bindMidiaParceirosInput() {
+  document.getElementById('midiaParceirosInput').addEventListener('input', e => {
+    midiaMensalManual = Math.max(0, Number(e.target.value) || 0);
+    update();
+  });
+}
+function resetMidiaParceirosInput() {
+  midiaMensalManual = 0;
+  document.getElementById('midiaParceirosInput').value = '';
+}
+
 // Assessment (aba Simulador da planilha original): respostas qualitativas que alimentam uma
 // sugestão de contratos/ano (fórmula G9) e, no caso de "vendedor focado", um custo real de
 // equipe (DRE Financeiro!B17 = IF(C21="SIM",7000,0)) — verificado direto na planilha-fonte.
@@ -356,6 +371,10 @@ function simulate(model) {
   // manualmente (ou média simples entre todos os produtos, se nada foi informado ainda).
   const leadsRede = zeros(), novosParceirosRede = zeros(), parceirosAtivosRede = zeros(), contratosRede = zeros();
   const honorariosRede = zeros(), faturamentoRede = zeros();
+  // Investimento em mídia efetivo: usa o valor editado manualmente (midiaMensalManual) só para
+  // modelos com rede de Partners — outros modelos no Comparativo continuam com o próprio
+  // model.midiaMensal (0), sem serem afetados por esse ajuste.
+  const midiaEfetiva = (model.redeParceiros && midiaMensalManual > 0) ? midiaMensalManual : model.midiaMensal;
   if (model.redeParceiros) {
     const totalContratosBase = Object.values(inputs).reduce((a, b) => a + b, 0);
     const pesoProduto = p => totalContratosBase > 0 ? (inputs[p.id] || 0) / totalContratosBase : 1 / PRODUCTS.length;
@@ -366,7 +385,7 @@ function simulate(model) {
 
     let ativos = 0;
     for (let m = 0; m < months; m++) {
-      leadsRede[m] = model.midiaMensal / CUSTO_POR_LEAD;
+      leadsRede[m] = midiaEfetiva / CUSTO_POR_LEAD;
       novosParceirosRede[m] = leadsRede[m] / LEADS_POR_PARCEIRO;
       ativos = ativos * (1 - MORTALIDADE_PARCEIROS_MENSAL) + novosParceirosRede[m];
       parceirosAtivosRede[m] = ativos;
@@ -481,7 +500,7 @@ function simulate(model) {
     crm[m] = -model.crm;
     comercial[m] = -despesasComerciaisMensal;
     funcionarios[m] = -funcionariosMensal;
-    midia[m] = -model.midiaMensal;
+    midia[m] = -midiaEfetiva;
     treinamento[m] = m === 0 ? -treinamentoTotal : 0;
     contabilidade[m] = -CUSTO_CONTABILIDADE_MENSAL;
 
@@ -532,7 +551,7 @@ function simulate(model) {
     treinamentoTotal,
     contratosSugeridos, reunioesNecessarias,
     pctFaixaAtual, pctTaxEfetivo, pctCorporateEfetivo,
-    leadsRede, novosParceirosRede, parceirosAtivosRede, contratosRede,
+    leadsRede, novosParceirosRede, parceirosAtivosRede, contratosRede, midiaEfetiva,
     anos: model.anos,
   };
 }
@@ -913,9 +932,11 @@ function renderRedeParceiros(model, r) {
   if (!box) return;
   if (!model.redeParceiros) { box.style.display = 'none'; return; }
   box.style.display = '';
+  const midiaInput = document.getElementById('midiaParceirosInput');
+  if (midiaInput) midiaInput.placeholder = model.midiaMensal;
   document.getElementById('redeParceirosContent').innerHTML = `
     <p class="financing-hint" style="margin:0 0 12px;">
-      Mídia (${brl(model.midiaMensal)}/mês) → 1 lead a cada ${brl(CUSTO_POR_LEAD)} → 1 parceiro a cada ${LEADS_POR_PARCEIRO} leads →
+      Mídia (${brl(r.midiaEfetiva)}/mês) → 1 lead a cada ${brl(CUSTO_POR_LEAD)} → 1 parceiro a cada ${LEADS_POR_PARCEIRO} leads →
       1 contrato a cada ${CONTRATOS_POR_PARCEIRO} parceiros ativos (mortalidade de ${pct(MORTALIDADE_PARCEIROS_MENSAL)}/mês).
       O franqueado fica com ${pct(PCT_HONORARIO_CONTRATO_PARCEIRO)} do % de honorários em cada contrato de parceiro.
     </p>
@@ -1051,7 +1072,7 @@ function buildPrintReport(model, r) {
       <tr><td>Investimento de aquisição</td><td>${brl(model.aquisicao)}</td></tr>
       <tr><td>Taxa de treinamento</td><td>${brl(r.treinamentoTotal)}</td></tr>
       <tr><td>Royalties mensais</td><td>${brl(model.royalties)}</td></tr>
-      ${model.midiaMensal ? `<tr><td>Investimento em mídia (mensal)</td><td>${brl(model.midiaMensal)}</td></tr>` : ''}
+      ${r.midiaEfetiva ? `<tr><td>Investimento em mídia (mensal)</td><td>${brl(r.midiaEfetiva)}</td></tr>` : ''}
       ${model.projetoArquitetonico ? `<tr><td>Projeto arquitetônico (${model.projetoArquitetonicoParcelas || 12}x)</td><td>${brl(model.projetoArquitetonico)}</td></tr>` : ''}
       ${model.funcionarioObrigatorioMin ? `<tr><td>Funcionário obrigatório (mínimo mensal)</td><td>${brl(model.funcionarioObrigatorioMin)}</td></tr>` : ''}
       <tr><td>Prazo de contrato</td><td>${model.prazoTexto}</td></tr>
@@ -1143,6 +1164,7 @@ document.getElementById('resetBtn').addEventListener('click', () => {
   resetFaixaInput();
   resetParticipantesInput();
   resetPlatinumPremiumInputs();
+  resetMidiaParceirosInput();
   update();
 });
 
@@ -1170,6 +1192,7 @@ renderPremissas();
 renderModelPills();
 renderFieldGroups();
 bindFinancingInputs();
+bindMidiaParceirosInput();
 bindAssessmentInputs();
 bindFaixaInput();
 bindParticipantesInput();
