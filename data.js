@@ -147,7 +147,10 @@ const MODELS = [
     // GS Partner: projeto arquitetônico obrigatório de R$50.000, parcelado em 12x.
     projetoArquitetonico: 50000,
     projetoArquitetonicoParcelas: 12,
-    nota: 'Honorários de 35% a 60%, conforme a faixa de faturamento médio (últimos 5 anos) do cliente. Investimento obrigatório em mídia de R$3.000/mês, projeto arquitetônico de R$50.000 (12x) e 1 funcionário (mín. R$8.000/mês).',
+    // GS Partner: cria rede de Partners — a mídia mensal alimenta o funil leads → parceiros →
+    // contratos (com mortalidade), gerando uma receita adicional para o franqueado.
+    redeParceiros: true,
+    nota: 'Honorários de 35% a 60%, conforme a faixa de faturamento médio (últimos 5 anos) do cliente. Investimento obrigatório em mídia de R$3.000/mês, projeto arquitetônico de R$50.000 (12x) e 1 funcionário (mín. R$8.000/mês). A mídia também alimenta a rede de Partners (leads → parceiros → contratos), que gera receita adicional ao franqueado.',
   },
   {
     id: 'GS_BLACK',
@@ -220,6 +223,16 @@ const FAIXA_GANHOS = [
   { ate: 1_000_000_000, pct: 0.55 },
   { ate: Infinity, pct: 0.60 },
 ];
+
+// Rede de Parceiros (GS Partner): funil mídia → leads → parceiros → contratos, com mortalidade
+// mensal reduzindo a base de parceiros ativos.
+const CUSTO_POR_LEAD = 30;                  // R$30 investidos em mídia geram 1 lead
+const LEADS_POR_PARCEIRO = 25;              // 25 leads geram 1 novo parceiro
+const CONTRATOS_POR_PARCEIRO = 10;          // a cada 10 parceiros ativos, 1 contrato/mês
+const MORTALIDADE_PARCEIROS_MENSAL = 0.05;  // 5% dos parceiros saem da rede por mês
+// Contrato fechado por um parceiro: o franqueado fica só com metade do % de honorários da faixa
+// progressiva (a outra metade é a comissão do parceiro).
+const PCT_HONORARIO_CONTRATO_PARCEIRO = 0.5;
 
 // Taxa de tarifa de cartão por nº de parcelas (1-12), fonte: "simulador_parcelamento.xlsx".
 // A tarifa é aplicada por "gross-up" (não é juros compostos como no financiamento por boleto):

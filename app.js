@@ -348,8 +348,47 @@ function simulate(model) {
     }
   });
 
-  const honorariosTotal = honorariosTax.map((v, i) => v + honorariosCorp[i]);
-  const monthlyRevenue = faturamentoTax.map((v, i) => v + faturamentoCorp[i]);
+  // Rede de Parceiros (GS Partner): a mídia mensal do modelo gera leads, os leads geram novos
+  // parceiros, e a base de parceiros ativos (descontada a mortalidade mensal) gera contratos —
+  // cada contrato de parceiro rende ao franqueado só metade do % de honorários da faixa
+  // progressiva (a outra metade é a comissão do parceiro). O ticket/prazo/parcelas do "contrato
+  // médio" da rede são a média ponderada dos produtos, pelo mesmo mix de contratos/ano informado
+  // manualmente (ou média simples entre todos os produtos, se nada foi informado ainda).
+  const leadsRede = zeros(), novosParceirosRede = zeros(), parceirosAtivosRede = zeros(), contratosRede = zeros();
+  const honorariosRede = zeros(), faturamentoRede = zeros();
+  if (model.redeParceiros) {
+    const totalContratosBase = Object.values(inputs).reduce((a, b) => a + b, 0);
+    const pesoProduto = p => totalContratosBase > 0 ? (inputs[p.id] || 0) / totalContratosBase : 1 / PRODUCTS.length;
+    const avgTkmAprovacao = PRODUCTS.reduce((acc, p) => acc + pesoProduto(p) * p.tkm * p.aprovacao, 0);
+    const avgTempoRede = Math.max(1, Math.round(PRODUCTS.reduce((acc, p) => acc + pesoProduto(p) * p.tempo, 0)));
+    const avgParcelasRede = Math.max(1, Math.round(PRODUCTS.reduce((acc, p) => acc + pesoProduto(p) * p.parcelas, 0)));
+    const feePerContratoRede = avgTkmAprovacao * pctFaixaAtual * PCT_HONORARIO_CONTRATO_PARCEIRO;
+
+    let ativos = 0;
+    for (let m = 0; m < months; m++) {
+      leadsRede[m] = model.midiaMensal / CUSTO_POR_LEAD;
+      novosParceirosRede[m] = leadsRede[m] / LEADS_POR_PARCEIRO;
+      ativos = ativos * (1 - MORTALIDADE_PARCEIROS_MENSAL) + novosParceirosRede[m];
+      parceirosAtivosRede[m] = ativos;
+      contratosRede[m] = ativos / CONTRATOS_POR_PARCEIRO;
+    }
+
+    for (let m = inicioHonorarioIdx; m < months; m++) honorariosRede[m] += contratosRede[m] * feePerContratoRede;
+
+    for (let closeMonth = 0; closeMonth < months; closeMonth++) {
+      const receitaFechada = contratosRede[closeMonth] * feePerContratoRede;
+      if (receitaFechada <= 0) continue;
+      const start = Math.max(inicioFaturamentoIdx, closeMonth + avgTempoRede);
+      const perInstallment = receitaFechada / avgParcelasRede;
+      for (let k = 0; k < avgParcelasRede; k++) {
+        const payMonth = start + k;
+        if (payMonth < months) faturamentoRede[payMonth] += perInstallment;
+      }
+    }
+  }
+
+  const honorariosTotal = honorariosTax.map((v, i) => v + honorariosCorp[i] + honorariosRede[i]);
+  const monthlyRevenue = faturamentoTax.map((v, i) => v + faturamentoCorp[i] + faturamentoRede[i]);
 
   const totalContratosAno = Object.values(inputs).reduce((a, b) => a + b, 0);
   const despesasComerciaisMensal = (totalContratosAno * REUNIOES_POR_CONTRATO * CUSTO_POR_REUNIAO) / 12;
@@ -482,8 +521,8 @@ function simulate(model) {
   }
 
   return {
-    honorariosTax, honorariosCorp, honorariosTotal,
-    faturamentoTax, faturamentoCorp, monthlyRevenue,
+    honorariosTax, honorariosCorp, honorariosRede, honorariosTotal,
+    faturamentoTax, faturamentoCorp, faturamentoRede, monthlyRevenue,
     impostos, royalties, crm, comercial, funcionarios, midia, treinamento, contabilidade, financiamento, outrasDespesas, projetoArq,
     monthlyExpense, monthlyProfit, cashFlow,
     faturamentoAno1, despesasAno1, lucroAno1, lucroFinal, roi, lucratividade,
@@ -493,6 +532,7 @@ function simulate(model) {
     treinamentoTotal,
     contratosSugeridos, reunioesNecessarias,
     pctFaixaAtual, pctTaxEfetivo, pctCorporateEfetivo,
+    leadsRede, novosParceirosRede, parceirosAtivosRede, contratosRede,
     anos: model.anos,
   };
 }
@@ -752,15 +792,19 @@ function dreRowsHtml(r) {
   const dataRow = (label, arr, opts) => dreDataRow(label, y1(arr), opts);
   const groupHead = dreGroupHead;
 
+  const temRede = r.honorariosRede.some(v => v !== 0) || r.faturamentoRede.some(v => v !== 0);
+
   let html = '';
   html += groupHead('Honorários (competência)');
   html += dataRow('Tax', r.honorariosTax, { colorize: true });
   html += dataRow('Corporate', r.honorariosCorp, { colorize: true });
+  if (temRede) html += dataRow('Rede de Parceiros', r.honorariosRede, { colorize: true });
   html += dataRow('Total Honorários', r.honorariosTotal, { rowClass: 'total-row', colorize: true });
 
   html += groupHead('Faturamento (caixa)');
   html += dataRow('Tax', r.faturamentoTax, { colorize: true });
   html += dataRow('Corporate', r.faturamentoCorp, { colorize: true });
+  if (temRede) html += dataRow('Rede de Parceiros', r.faturamentoRede, { colorize: true });
   html += dataRow('Total Faturamento', r.monthlyRevenue, { rowClass: 'total-row', colorize: true });
 
   html += groupHead('Despesas');
@@ -839,6 +883,44 @@ function printYearlyTableHtml(r) {
     + dreDataRow('Lucro', yearlyTotals(r.monthlyProfit, r.anos), { rowClass: 'hero-row', colorize: true })
     + dreDataRow('Caixa acumulado (fim do ano)', yearlyEndValues(r.cashFlow, r.anos), { rowClass: 'hero-row', colorize: true, showTotal: false });
   return `<div class="p-yearly">${dreTableHtml(rows, headers, 'Total Contrato')}</div>`;
+}
+
+// ---------- Rede de Parceiros (GS Partner) ----------
+function redeParceirosRow(label, arr, formatFn, opts) {
+  opts = opts || {};
+  const cls = opts.rowClass || 'data-row';
+  const cells = arr.map(v => `<td>${formatFn(v)}</td>`).join('');
+  return `<tr class="${cls}"><td class="label">${label}</td>${cells}<td class="total-col"></td></tr>`;
+}
+function redeParceirosTableHtml(r) {
+  const headers = Array.from({ length: r.anos }, (_, i) => `Ano ${i + 1}`);
+  const headerCols = headers.map(h => `<th>${h}</th>`).join('');
+  const fmtInt = v => Math.round(v).toLocaleString('pt-BR');
+  const rows = redeParceirosRow('Leads gerados', yearlyTotals(r.leadsRede, r.anos), fmtInt)
+    + redeParceirosRow('Novos parceiros', yearlyTotals(r.novosParceirosRede, r.anos), fmtInt)
+    + redeParceirosRow('Parceiros ativos (fim do ano)', yearlyEndValues(r.parceirosAtivosRede, r.anos), fmtInt)
+    + redeParceirosRow('Contratos gerados pela rede', yearlyTotals(r.contratosRede, r.anos), fmtInt, { rowClass: 'total-row' })
+    + redeParceirosRow('Honorários da rede (competência)', yearlyTotals(r.honorariosRede, r.anos), brl, { rowClass: 'hero-row' });
+  return `
+    <table class="dre-table">
+      <thead><tr><th class="label">Rede de Parceiros</th>${headerCols}<th class="total-col"></th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table>
+  `;
+}
+function renderRedeParceiros(model, r) {
+  const box = document.getElementById('redeParceirosBox');
+  if (!box) return;
+  if (!model.redeParceiros) { box.style.display = 'none'; return; }
+  box.style.display = '';
+  document.getElementById('redeParceirosContent').innerHTML = `
+    <p class="financing-hint" style="margin:0 0 12px;">
+      Mídia (${brl(model.midiaMensal)}/mês) → 1 lead a cada ${brl(CUSTO_POR_LEAD)} → 1 parceiro a cada ${LEADS_POR_PARCEIRO} leads →
+      1 contrato a cada ${CONTRATOS_POR_PARCEIRO} parceiros ativos (mortalidade de ${pct(MORTALIDADE_PARCEIROS_MENSAL)}/mês).
+      O franqueado fica com ${pct(PCT_HONORARIO_CONTRATO_PARCEIRO)} do % de honorários em cada contrato de parceiro.
+    </p>
+    <div class="dre-scroll">${redeParceirosTableHtml(r)}</div>
+  `;
 }
 
 // ---------- Comparativo entre modalidades ----------
@@ -994,6 +1076,11 @@ function buildPrintReport(model, r) {
     <h2>DRE Financeiro — Ano 1 (detalhado mês a mês)</h2>
     <div class="p-dre">${document.getElementById('dreTable').innerHTML}</div>
 
+    ${model.redeParceiros ? `
+    <h2>Rede de Parceiros</h2>
+    <div class="p-dre">${redeParceirosTableHtml(r)}</div>
+    ` : ''}
+
     ${printComparativoHtml()}
 
     <p class="p-disclaimer">
@@ -1025,6 +1112,7 @@ function update() {
   renderFlowChart(r, { hostId: 'chartHostFluxo', legendId: 'chartLegendFluxo', titleId: 'chartTitleFluxo', titlePrefix: 'Receita, despesa, lucro e caixa acumulado' });
   renderDRE(r);
   renderFluxoTable(r);
+  renderRedeParceiros(model, r);
   renderComparativo();
   const finPlaceholder = document.getElementById('finValorVenda');
   if (finPlaceholder) finPlaceholder.placeholder = brl(model.aquisicao);
